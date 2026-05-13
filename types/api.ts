@@ -52,6 +52,19 @@ export interface AuditLogRecord {
   summary: string;
 }
 
+export interface NotificationOutboxRecord {
+  body: string;
+  channel: "in_app";
+  createdAt: string;
+  entityId?: string;
+  entityType?: "inspection";
+  eventType: "inspection.assigned" | "inspection.status_updated";
+  id: string;
+  recipient: Pick<User, "email" | "id" | "name" | "role">;
+  status: "pending" | "processed" | "failed";
+  title: string;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -71,6 +84,34 @@ export interface BusinessEstablishment {
   contactNumber?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LguRecord {
+  id: string;
+  code: string;
+  name: string;
+  region?: string;
+  province?: string;
+  city?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfficeRecord {
+  id: string;
+  lguId: string;
+  code: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserOfficeAssignmentRecord {
+  id: string;
+  createdAt: string;
+  office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name">;
+  user: Pick<User, "id" | "email" | "name" | "role">;
 }
 
 export interface PermitRecord {
