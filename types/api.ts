@@ -151,6 +151,88 @@ export interface OfficeModuleRecord {
   module: Pick<ModuleRecord, "id" | "code" | "name" | "isActive">;
 }
 
+export interface FireSafetyCertificateRecord {
+  id: string;
+  certificateNumber: string;
+  issuedAt: string;
+  expiresAt: string;
+  status: "draft" | "issued" | "revoked" | "expired";
+  remarks?: string;
+  createdAt: string;
+  updatedAt: string;
+  inspection: {
+    id: string;
+    status: InspectionRecord["status"];
+    scheduledAt: string;
+    completedAt?: string;
+    business: {
+      id: string;
+      businessName: string;
+    };
+    office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name">;
+    permit: {
+      id: string;
+      permitNumber: string;
+    };
+  };
+}
+
+export interface PublicFireSafetyCertificateLookupRecord {
+  certificateNumber: string;
+  issuedAt: string;
+  expiresAt: string;
+  status: FireSafetyCertificateRecord["status"];
+  remarks?: string;
+  business: {
+    businessName: string;
+  };
+  office: Pick<OfficeRecord, "code" | "name">;
+  permit: {
+    permitNumber: string;
+  };
+  inspection: {
+    scheduledAt: string;
+    completedAt?: string;
+    status: InspectionRecord["status"];
+  };
+}
+
+export interface IssueReportRecord {
+  id: string;
+  reportNumber: string;
+  category:
+    | "fire_hazard"
+    | "sanitation"
+    | "structural"
+    | "public_safety"
+    | "other";
+  subject: string;
+  description: string;
+  locationDescription?: string;
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterPhone?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+  };
+  status: "submitted" | "under_review" | "resolved" | "dismissed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePublicIssueReportInput {
+  category: IssueReportRecord["category"];
+  subject: string;
+  description: string;
+  locationDescription?: string;
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterPhone?: string;
+  location?: IssueReportRecord["location"];
+}
+
 export interface PermitRecord {
   id: string;
   business: {
@@ -165,6 +247,63 @@ export interface PermitRecord {
   createdById?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PublicPermitLookupRecord {
+  permitNumber: string;
+  business: {
+    id: string;
+    businessName: string;
+  };
+  applicationDate: string;
+  expirationDate: string;
+  lineOfBusiness: string;
+  status: PermitRecord["status"];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicPermitFindingsLookupRecord {
+  permit: PublicPermitLookupRecord;
+  latestInspection?: {
+    id: string;
+    scheduledAt: string;
+    completedAt?: string;
+    status: InspectionRecord["status"];
+  };
+  findings: FindingRecord[];
+}
+
+export interface PaymentRecord {
+  id: string;
+  referenceNumber: string;
+  provider: "local" | "paymongo";
+  providerPaymentId?: string;
+  amountInMinor: number;
+  currency: string;
+  status: "pending" | "processing" | "paid" | "failed" | "refunded";
+  description?: string;
+  checkoutUrl?: string;
+  paidAt?: string;
+  failedAt?: string;
+  failureReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  permit: {
+    id: string;
+    permitNumber: string;
+    business: {
+      id: string;
+      businessName: string;
+    };
+  };
+}
+
+export interface CreatePaymentInput {
+  permitId: string;
+  amountInMinor: number;
+  currency?: string;
+  description?: string;
 }
 
 export interface InspectionRecord {

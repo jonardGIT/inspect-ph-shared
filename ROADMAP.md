@@ -363,22 +363,21 @@ Use this order when geography work starts in the API:
 
 This keeps geography proportional to actual product needs instead of importing the full CIRS administrative hierarchy too early.
 
-## Phase 5: Public and Payment Workflows
+## Phase 5: Public Participation Workflows
 
 ### API
 
 - Add owner-facing endpoints for applications, findings, and certificates
 - Add citizen issue reporting
-- Add payment adapter and webhook processing
 
 ### Dashboard
 
-- Add payment reconciliation and owner-support screens
+- Add owner-support screens
 
 ### Mobile
 
 - Add citizen reporting flows
-- Add business-owner permit and payment views
+- Add business-owner permit views
 
 Outcome:
 
@@ -411,6 +410,26 @@ Outcome:
 
 - InspectPH becomes a production-ready multi-office LGU inspection platform.
 
+## Phase 7: Payments
+
+### API
+
+- Add payment adapter and webhook processing
+- Add provider-grade webhook verification and reconciliation hooks
+
+### Dashboard
+
+- Add payment reconciliation screens
+- Add owner-support payment lookup and payment operations tools
+
+### Mobile
+
+- Add business-owner payment views
+
+Outcome:
+
+- Payment collection and reconciliation land after the core platform, public workflows, and module rollout are stable.
+
 ## Milestones
 
 | Milestone | Summary                                       |
@@ -419,8 +438,9 @@ Outcome:
 | `M2`      | Field capture, offline support, audit logging |
 | `M3`      | Multi-LGU support and full RBAC               |
 | `M4`      | Second module live on the generic core        |
-| `M5`      | Citizen and payment workflows live            |
+| `M5`      | Citizen and owner-facing public workflows     |
 | `M6`      | Remaining modules and operational hardening   |
+| `M7`      | Payments and reconciliation live              |
 
 ## Immediate Execution Order
 
