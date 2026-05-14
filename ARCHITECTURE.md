@@ -18,6 +18,8 @@ Canonical cross-repo delivery plan: `shared/ROADMAP.md`.
 - Auth: `Authorization: Bearer <jwt>`
 - Initial API roles: `admin`, `inspector`
 - Session payloads may return both access and refresh JWTs
+- Session inventory endpoints now include `GET /api/v1/auth/sessions`, `GET /api/v1/auth/users/:id/sessions`, and `DELETE /api/v1/auth/sessions/:sessionId`
+- JWT auth sessions may carry a session id claim so revoked sessions can be denied immediately on protected routes
 - Attachment upload intents may return local API upload URLs or Supabase signed URLs
 - Attachment download intents may return local API download URLs or Supabase signed URLs
 - Dates: ISO 8601 strings

@@ -24,6 +24,13 @@ export interface User {
   email: string;
   name: string;
   role: "admin" | "inspector";
+  lguId?: string;
+  officeIds: string[];
+  roleProfile: {
+    accessScope: "assigned" | "global";
+    label: string;
+    permissions: string[];
+  };
   createdAt: string;
 }
 
@@ -32,6 +39,7 @@ export interface AuditLogRecord {
     | "attachment.uploaded"
     | "auth.bootstrap_admin"
     | "auth.login"
+    | "auth.session_revoked"
     | "finding.created"
     | "finding.resolved"
     | "inspection.assigned"
@@ -69,6 +77,18 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+}
+
+export interface AuthSessionRecord {
+  id: string;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  revokedAt?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  isCurrent: boolean;
+  user?: Pick<User, "id" | "email" | "name" | "role">;
 }
 
 export interface BusinessEstablishment {
@@ -114,6 +134,23 @@ export interface UserOfficeAssignmentRecord {
   user: Pick<User, "id" | "email" | "name" | "role">;
 }
 
+export interface ModuleRecord {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfficeModuleRecord {
+  id: string;
+  createdAt: string;
+  office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name">;
+  module: Pick<ModuleRecord, "id" | "code" | "name" | "isActive">;
+}
+
 export interface PermitRecord {
   id: string;
   business: {
@@ -136,6 +173,7 @@ export interface InspectionRecord {
     id: string;
     businessName: string;
   };
+  office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name">;
   permit: {
     id: string;
     permitNumber: string;
@@ -153,6 +191,22 @@ export interface InspectionRecord {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InspectionMapPoint {
+  id: string;
+  business: {
+    id: string;
+    businessName: string;
+  };
+  office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name">;
+  status: InspectionRecord["status"];
+  scheduledAt: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+  };
 }
 
 export interface ChecklistTemplateRecord {
