@@ -23,11 +23,16 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "inspector";
+  role:
+    | "admin"
+    | "inspector"
+    | "lgu_admin"
+    | "office_supervisor"
+    | "office_clerk";
   lguId?: string;
   officeIds: string[];
   roleProfile: {
-    accessScope: "assigned" | "global";
+    accessScope: "assigned" | "global" | "lgu" | "office";
     label: string;
     permissions: string[];
   };
@@ -441,6 +446,17 @@ export interface InspectionSummary {
   completed: number;
   overdue: number;
   canceled: number;
+}
+
+export interface InspectionsByOfficeRow {
+  officeId: string;
+  officeName: string;
+  scheduled: number;
+  inProgress: number;
+  completed: number;
+  overdue: number;
+  canceled: number;
+  total: number;
 }
 
 export interface InspectionHistoryEvent {

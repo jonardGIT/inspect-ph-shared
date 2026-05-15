@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the canonical delivery plan for InspectPH across the API, dashboard, and mobile repositories. It defines the target platform shape, the role model, the reusable CIRS patterns to adopt, and the phased roadmap the team should follow.
+This document is the canonical delivery plan for InspectPH across the API, dashboard, and mobile repositories. It defines the target platform shape, the role model, the reusable CIRS patterns to adopt, the phased roadmap, and the system logic gaps the team must close.
 
 ## Product Shape
 
@@ -22,7 +22,7 @@ InspectPH is one LGU inspection platform with a shared inspection core and 11 mo
 
 Each module reuses the same core capabilities:
 
-- Real-time tracking
+- Real-time field tracking and status push
 - Geo-tagging
 - Photo and document capture
 - Digital checklists
@@ -33,38 +33,37 @@ Each module reuses the same core capabilities:
 - Role-based access
 - Audit trails
 
-The system should be built as one configurable inspection engine, not as 11 disconnected applications.
+The system must be built as one configurable inspection engine, not as 11 disconnected applications. Module-specific behavior is limited to checklist templates, scoring rules, certificate templates, and reporting filters. Everything else is shared.
 
 ## Geography Decision
 
-Geography functionality is necessary for InspectPH, but it should be introduced in layers.
+Geography functionality is necessary for InspectPH, but it must be introduced in layers.
 
-### What is required immediately
+### What is implemented
 
 - Geo-tagged inspection execution for field work
-- Latitude and longitude capture on inspections, findings, attachments, and public reports
-- Search and reporting by business address fields already present in the BPLO foundation
-- Map-based mobile and dashboard views for assigned inspections
+- Latitude, longitude, and accuracy capture on inspections, findings, attachments, and issue reports
+- Search and reporting by business address strings already stored on `BusinessEstablishment`
+- Map-based mobile and dashboard views using captured inspection coordinates
 
-### What is required after BPLO MVP
+### What comes next
 
-- LGU-aware scoping so one deployment can support multiple cities or municipalities safely
-- Office service-area boundaries for assignment, routing, and supervision
+- Formal `Lgu` and `Office` jurisdiction scoping so one deployment can safely serve multiple cities or municipalities
+- Office service-area context for assignment, routing, and supervision
 - Module-specific geographic rules such as zoning validation and environmental incident mapping
-- Aggregated reporting by LGU and smaller administrative areas where the module requires it
 
-### What is not required for the first BPLO slice
+### What is deferred
 
 - Full CIRS-style region, province, city, and barangay master-data management
-- Geography CRUD screens before there is a concrete module or tenant need for them
-- Hard dependency on national-to-barangay hierarchy for every endpoint in the system
+- Geography CRUD screens without a concrete module or tenant need
+- Hard dependency on a national-to-barangay hierarchy for every endpoint
 
 Decision:
 
-- InspectPH should adopt a phased geography model.
-- Phase 1 uses operational geo capture plus existing address strings.
-- Phase 3 introduces LGU and office jurisdiction scoping.
-- Fine-grained reference geography should be added only when a module proves it needs it.
+- InspectPH uses a phased geography model.
+- Phase A uses operational geo capture already implemented with existing address strings.
+- Phase B enforces `Lgu` and `Office` scope boundaries in middleware across all routes.
+- Fine-grained reference geography is added only when a module proves it needs it.
 
 ## Primary Users
 
@@ -76,7 +75,7 @@ Decision:
 
 ## Target Role Model
 
-The long-term RBAC model should support all modules and multi-LGU deployments.
+The long-term RBAC model must support all modules and multi-LGU deployments.
 
 | Role                | Scope         | Primary responsibilities                                                           |
 | ------------------- | ------------- | ---------------------------------------------------------------------------------- |
@@ -90,15 +89,15 @@ The long-term RBAC model should support all modules and multi-LGU deployments.
 
 Notes:
 
-- The current API implementation uses `admin` and `inspector` only.
-- The wider role model should be introduced after BPLO MVP is stable.
-- Permissions should follow scoped rules such as `assigned`, `office`, `lgu`, and `global`.
+- The current API and mobile use `admin` and `inspector` only. The `UserRole` enum must be widened when scope enforcement is added.
+- The `roleProfile` shape already includes `accessScope` and `permissions` arrays. The fuller role model maps onto this pattern without breaking existing consumers.
+- Permissions must follow scoped rules: `assigned`, `office`, `lgu`, and `global`. Fail closed when the scope cannot be determined.
 
 ## System Architecture Direction
 
 ### Shared inspection core
 
-All modules should sit on top of a common domain layer covering:
+All modules sit on top of a common domain layer covering:
 
 - Authentication and session management
 - LGU and office scoping
@@ -115,84 +114,115 @@ All modules should sit on top of a common domain layer covering:
 
 ### Module overlays
 
-Each module should contribute only what is unique:
+Each module contributes only what is unique:
 
 - Module-specific application fields
-- Checklist templates
+- Checklist templates keyed by the `module` field on `ChecklistTemplate`
 - Scoring rules
 - Certificate templates
 - Reporting filters
 - Office-specific approval logic
 
+Module gating must be enforced in middleware by checking `OfficeModule` before any module-specific route is reached. An office that has not been assigned a module must receive `403` on that module's routes.
+
 ### Data model direction
 
-Current foundation already includes users, businesses, permits, inspections, checklist templates, checklist results, and findings. The next data model additions should be:
+The Prisma schema already contains the full foundation: `User`, `Lgu`, `Office`, `Module`, `OfficeModule`, `UserOfficeAssignment`, `BusinessEstablishment`, `PermitRecord`, `Inspection`, `InspectionChecklistResult`, `ChecklistTemplate`, `Finding`, `Attachment`, `FireSafetyCertificate`, `IssueReport`, `PaymentRecord`, `NotificationOutbox`, and `AuditLog`.
 
-1. `Lgu`
-2. `Office`
-3. `Module`
-4. `OfficeModule`
-5. `UserOfficeAssignment`
-6. `GeoPoint` or equivalent location fields on inspections, findings, attachments, and issue reports
-7. `Attachment`
-8. `AuditLog`
-9. `Notification`
-10. `Payment`
-11. `Certificate`
-12. `IssueReport`
+The next data model additions should be:
 
-Geography-specific additions should be phased:
+1. `archivedAt` soft-delete field on `Lgu`, `Office`, `Module`, `BusinessEstablishment`, and `PermitRecord`.
+2. `moduleCode` or relation on `Inspection` so that module-specific logic can be enforced at the service layer without re-deriving it from the office.
+3. Reference geography entities (`Barangay`, `City`, `Province`) added only when `ZoneVerify` or `EcoWatch` explicitly require them.
 
-1. Store captured coordinates and accuracy for field actions.
-2. Add `Lgu` and `Office` boundaries for multi-LGU scoping.
-3. Add richer reference geography only when needed for modules such as ZoneVerify, EcoWatch, or planning reports.
+Soft deletion must follow the CIRS `archivedAt` pattern for all administrative resources.
 
-Soft deletion should follow the CIRS `archivedAt` pattern for administrative resources.
+### Automated state machine
+
+The following status transitions require scheduled background jobs, not just API transitions:
+
+| Model                   | Status    | Trigger condition                                        |
+| ----------------------- | --------- | -------------------------------------------------------- |
+| `Inspection`            | `OVERDUE` | `scheduledAt` has passed and status is still `SCHEDULED` |
+| `PermitRecord`          | `EXPIRED` | `expirationDate` has passed and status is not terminal   |
+| `FireSafetyCertificate` | `EXPIRED` | `expiresAt` has passed and status is `ISSUED`            |
+
+These transitions must be driven by a cron job or a Postgres scheduled function, not by the request path. Until they are wired, the OVERDUE and EXPIRED enum values are dead states and will silently mislead consumers.
+
+### Certificate issuance policy
+
+`FireSafetyCertificate` issuance must satisfy all of:
+
+1. The linked inspection has `status = COMPLETED`.
+2. No other `ISSUED` or non-expired certificate exists for the same permit record in the same validity period.
+3. The issuer holds `office_supervisor` scope or higher for the office that owns the inspection.
+4. The `certificateNumber` must be unique and generated server-side; callers may not supply it.
+
+The service layer must enforce all four conditions atomically inside a Prisma transaction before writing.
+
+### Real-time and push strategy
+
+The product shape requires real-time tracking and instant alerts. The strategy is:
+
+- **Inspection assignment alerts**: delivered via the existing `NotificationOutbox` outbox worker. The worker polls or is triggered after writes and fans out to in-app and, later, Expo push.
+- **Live status updates for the dashboard**: implement SSE on `GET /api/v1/inspections/stream` scoped to the caller's LGU and office. The dashboard consumes this stream to refresh the inspection queue without polling.
+- **Expo push notifications for mobile**: wire `expo-notifications` in the mobile app and register the Expo push token with the API at login. The notification outbox worker sends to Expo push as a second channel alongside in-app.
+- WebSocket is not required for the current feature set. SSE covers unidirectional dashboard status feeds adequately.
+
+### Offline sync protocol for mobile
+
+Inspections can be executed in areas with no connectivity. The mobile client must:
+
+1. Cache the assigned inspection list and checklist templates to AsyncStorage on last successful fetch.
+2. Buffer checklist results, findings, and attachment uploads locally using the existing `attachment-upload-queue.ts` pattern extended to cover all field actions.
+3. On reconnect, replay the queue in submission order: checklist results first, then findings, then attachment uploads.
+4. Surface a sync status indicator showing pending items, in-progress upload, and last-synced timestamp.
+5. Conflict resolution uses server-wins for status fields and append-only semantics for findings and attachments.
 
 ## CIRS Reuse Policy
 
 InspectPH should selectively copy or adapt the highest-value pieces from `xypes-cirs-api` to accelerate delivery.
 
-### Reuse now or soon
+### Already applied or apply now
 
 - `asyncHandler` pattern
-- request validation middleware shape
-- not found handler shape
-- startup environment validation subset
+- Request validation middleware shape
+- Not found handler shape
+- Startup environment validation
 - Prisma-aware error handler mappings
-- rate limit middleware
-- audit log middleware
-- JWT auth/session handling shape without Supabase dependencies
-- role profile and grouped permission pattern
-- list query helper pattern
-- CRUD factory pattern for repetitive administrative resources
-- archive helpers using `archivedAt`
-- scope middleware adapted from jurisdiction handling
-- jurisdiction-scope resolver pattern for LGU and office enforcement, but adapted away from CIRS incident geography
+- Rate limit middleware
+- Audit log middleware
+- JWT auth and session handling without Supabase dependencies
+- Role profile and grouped permission pattern
+- List query helper pattern
 
-### Dashboard reuse now or soon
+### Apply next
 
-- `AuthGate` and `AppShell` patterns from the CIRS dashboard for authenticated route layout, role-aware navigation, and session restoration
-- URL-backed list state such as `useListQueryParams` so InspectPH registry and queue pages keep filters and pagination in shareable URLs
-- `CrudTable`, `FilterToolbar`, and `ResizableTable` patterns for power-user registry pages
-- `CrudFormModal` pattern for repeated admin create and edit flows, adapted to InspectPH typed forms instead of CIRS dynamic CRUD config
-- centralized API client and response normalization helpers so InspectPH dashboard requests use one auth-aware path and consistent error handling
+- CRUD factory pattern for remaining repetitive administrative resources
+- Archive helpers using `archivedAt`
+- Scope middleware adapted from jurisdiction handling: `resolveInspectScope(user)` → `{ lguId, officeIds, accessScope }` applied as a request context before service calls
+- Fail-closed scope calculation: if scope cannot be resolved, deny with 403
+
+### Dashboard reuse
+
+- URL-backed list state pattern is already in use. Extend to all new browser pages.
+- `CrudFormModal` pattern for repeated admin create and edit flows is already in use. Continue this pattern.
+- Role-aware navigation gates must use the `roleProfile.permissions` array returned by the API, not role string comparisons in components.
 
 ### Geography-specific CIRS adoption
 
 Copy the pattern, not the whole hierarchy.
 
-- Reuse the idea behind CIRS `resolveJurisdictionScope()` and fail-closed scope calculation.
-- Adapt it to InspectPH `lgu`, `office`, `assigned`, and later optional sub-LGU geography scopes.
-- Do not copy CIRS `region`, `province`, `city`, and `barangay` resource management as a blanket dependency for InspectPH MVP.
-- Do not block BPLO delivery on full geography tables.
+- Adapt CIRS `resolveJurisdictionScope()` to `resolveInspectScope()` using `lguId`, `officeIds`, and `accessScope` from the JWT payload.
+- Do not copy CIRS `region`, `province`, `city`, and `barangay` resource management.
+- Do not block any delivery on full geography tables.
 
-### Do not copy for MVP
+### Do not copy
 
 - Supabase authentication integration
 - MFA enforcement
 - Data residency features
-- CIRS-specific privacy and residency workflows that do not apply yet
+- CIRS-specific privacy and residency workflows that do not apply
 
 ## Cross-Repo Delivery Principles
 
@@ -203,260 +233,369 @@ Copy the pattern, not the whole hierarchy.
 5. Roll out one end-to-end vertical slice before broadening module coverage.
 6. Prefer generic inspection-core behavior over module-specific forks.
 
-## Current State
+---
 
-### API
+## True Current State
+
+### API (complete as of May 2026)
+
+All items below are implemented with test coverage unless noted.
+
+- Environment loading and startup validation
+- JWT access and refresh tokens, bcrypt password hashing
+- Auth routes: bootstrap admin, login, refresh, me, push-token registration
+- Session inventory and revocation: `GET /auth/sessions`, `GET /auth/users/:id/sessions`, `DELETE /auth/sessions/:id`
+- User listing and office-assignment management: `GET /auth/users`, `GET /auth/users/:id/office-assignments`, `POST` and `DELETE` on same
+- Businesses: list, create, detail
+- Permits: list, create, detail, status
+- Inspections: list, detail, create, assign, status transitions, checklist results, findings, summaries, history
+- Inspection summary: `GET /api/v1/inspections/summary` with jurisdiction scope, lgu/office/date-range filters, status counts
+- Attachment upload intent (local and Supabase seam), download intent, binary upload and download
+- Geo capture on inspections, findings, attachments, and issue reports
+- Audit log write and query
+- Notifications outbox write and query
+- Rate limiting on auth and public routes
+- LGU, office, module, office-module, and user-office assignment CRUD routes and services
+- `PATCH /lgus/:id/archive` and `PATCH /offices/:id/archive` soft-delete endpoints (archivedAt on 5 models)
+- FireGuard FSIC certificate: schema, service, routes, and full issuance integrity enforcement
+- `requireModule(moduleCode)` middleware with 60s in-process cache; wired on FSIC routes
+- Issue reports: schema, service, and public and admin routes
+- PaymentRecord: schema, service, and routes including `GET /api/v1/payments/` list with pagination and status filter
+- PayMongo HMAC webhook verification via `timingSafeEqual` in `PaymongoPaymentProvider.parseWebhookEvent()`; raw body captured by `express.json({ verify })`
+- Automated status sweep script (`src/scripts/run-status-sweep.ts`): sweeps OVERDUE inspections, EXPIRED permits, EXPIRED certificates
+- In-process cron for status sweep (every 15 min in `server.ts`), standalone `npm run sweep:status`
+- SSE event bus (`src/lib/inspection-event-bus.ts`) and `GET /api/v1/inspections/events` stream endpoint scoped to caller's jurisdiction
+- Expo push notification delivery worker (`src/scripts/run-notification-delivery.ts`): polls PENDING outbox entries, sends via Expo Push API; in-process cron every 30s; standalone `npm run deliver:notifications`
+- `UserRole` enum widened to 5 values: `ADMIN`, `INSPECTOR`, `LGU_ADMIN`, `OFFICE_SUPERVISOR`, `OFFICE_CLERK`; `ROLE_PROFILES` map with `accessScope` and `permissions`; JWT validation updated
+- Passing test coverage for all of the above
+
+Gaps remaining in the API:
+
+- No inspection count breakdown by office; `GET /inspections/summary` returns global/scoped totals only
+- `business_owner` and `citizen` roles not yet in `UserRole` enum; no external registration flow
+
+### Dashboard (complete as of May 2026)
+
+All items below have components with test coverage unless noted.
+
+- App shell with session-aware protected routing
+- Login backed by API auth; session stored in browser
+- Inspection queue: summary cards, status filter, pagination, workspace links, **SSE live badge** (connected / disconnected indicator)
+- Inspection workspace: checklist, findings, attachment upload and download
+- Businesses: filter, pagination, create
+- Permits: filter, pagination, create
+- FireGuard FSIC browser and certificate panel
+- BuildSure browser
+- SanitaCheck browser and overview panel
+- MarketGuard browser (no tests yet)
+- LGU browser and management
+- Office browser and management
+- Module browser and management
+- Office-module management with enable (create) and disable (delete) actions
+- User browser with role filter and office-assignment management
+- Audit log browser
+- Notification outbox browser
+- Session browser and admin revoke controls
+- Payment browser
+- Operations report page with inspection status summary (total/scheduled/in-progress/completed/overdue)
+- Issue report browser
+- Public lookup pages: permit, fire safety certificate, issue report, payment
+
+Gaps remaining in the dashboard:
+
+- No archive action button in LGU browser or Office browser (API endpoints exist)
+- Role filter in user browser only covers `admin` and `inspector`; missing `lgu_admin`, `office_supervisor`, `office_clerk`
+- Operations report has no breakdown by office; only global status counts
+- Role-aware navigation: menus and action buttons check the role string, not `roleProfile.permissions`
+- Reports page has no PDF or CSV export
+
+### Mobile (complete as of May 2026)
 
 Implemented:
 
-- Environment loading and startup validation entrypoints
-- JWT access and refresh tokens
-- Password hashing
-- Prisma client setup
-- Centralized app errors and error middleware
-- Auth middleware
-- Request validation helper
-- Auth routes: bootstrap admin, login, refresh, me
-- BPLO routes: businesses list/create and permits list/create
-- BPLO inspection routes for list/detail/create/assignment/status, checklist results, findings, summaries, attachment metadata, upload intents, and download intents
-- Local attachment binary upload and download routes with signed tokens
-- Provider-aware auth and storage seams for future Supabase adoption
-- Prisma schema foundations for users, businesses, permits, inspections, checklist templates, checklist results, findings, and attachments
-- Passing test coverage for auth, businesses, permits, inspections, and uploads
+- Expo Router scaffold with layout and public screens
+- Theme constants
+- Auth session hook with SecureStore persistence and token normalization
+- Inspector home: sign-in flow, assigned inspections list, summary metrics, sign-out
+- Inspection detail screen with full field execution: checklist pass/fail/not-applicable, status transitions (start, complete), findings with GPS and camera capture, attachment upload via upload-intent flow
+- Inspection map screen (geo-tagged points)
+- Inspection schedule screen
+- Public services screen (issue report submit and issue-report status lookup)
+- Offline queue for checklist results, findings, and attachment uploads with replay on reconnect
+- Expo push token registration at login via `POST /auth/push-token`
+- Push notification tap handler routing to inspection detail
+- AsyncStorage inspection detail cache with offline stale banner
+- `SyncStatusBar` component surfaced on home and detail screens
+- API client module covering all field operations
 
-### Dashboard
+Gaps remaining in mobile:
 
-Implemented:
+- `normalizeAuthSession` fallback only handles `admin` and `inspector`; `lgu_admin`, `office_supervisor`, and `office_clerk` fall back to the inspector profile, which gives them the wrong `accessScope` and label
+- Token refresh is not implemented; a 401 on any request immediately signs the user out rather than attempting a refresh first with the stored `refreshToken`
+- Public-services screen only has issue-report submit and lookup; no permit-number lookup (`GET /permits/public/:permitNumber`) and no payment-reference lookup (`GET /payments/public/:referenceNumber`), both of which the API already exposes
+- Non-inspector signed-in home shows a bare "Read-only role" placeholder with no useful content; `lgu_admin` and `office_supervisor` users should see scoped summary metrics and a link to the schedule/map for supervised inspection progress
+- `SyncStatusBar` reads the queue count only on mount; count goes stale while the screen stays open
+- Inspection list on home screen has no pagination beyond the initial 10 records; "Load more" is missing
 
-- Next.js app scaffold
-- Providers and test setup
-- Dashboard session login backed by API auth
-- Shared dashboard session provider and reusable inspection route shell
-- Shared dashboard app shell with protected-route navigation for inspections, businesses, and permits
-- Inspection queue page with summary cards, URL-backed status filter, active filter feedback, URL-backed pagination, and workspace links
-- Inspection workspace with checklist, findings, attachment upload, and attachment open/download
-- Route-level loading and error states for inspections queue and workspace
-- Businesses page with URL-backed registry filters, active filter feedback, URL-backed pagination, and admin create flow
-- Permits page with URL-backed status and business filters, active filter feedback, URL-backed pagination, and admin create flow
+---
 
-### Mobile
+## System Logic Gap Analysis
 
-Implemented:
+The following gaps are cross-cutting and must be resolved before multi-LGU or module rollout is safe.
 
-- Expo Router scaffold
-- Shared theme constants
+### Gap 1: LGU and office scope enforcement
 
-## Roadmap
+**Problem.** `Lgu`, `Office`, and `UserOfficeAssignment` models are fully seeded and queryable. There is no middleware that derives a scope object from the JWT and enforces it before service calls. An admin JWT from LGU A can currently read and write LGU B data.
 
-## Phase 1: BPLO MVP
+**Resolution.**
 
-### API
+1. Add `resolveInspectScope(user: JwtPayload): InspectScope` that returns `{ lguId, officeIds, accessScope }`.
+2. Attach the scope to `res.locals.scope` in an `attachScope` middleware registered after `authenticate`.
+3. All service calls that accept `lguId` or `officeId` filters must derive them from `res.locals.scope`, not from query params when the caller has `office` or `lgu` scope.
+4. Fail closed: if `lguId` is missing on a non-super-admin user, return 403.
 
-- Add inspection create, list, detail, assign, and status transition endpoints
-- Add checklist execution endpoints
-- Add findings create, list, and resolution endpoints
-- Add captured latitude, longitude, and accuracy fields for field actions where applicable
-- Add overview summary endpoint for scheduled, in-progress, completed, and overdue counts
-- Add tests for all new BPLO inspection flows
+### Gap 2: Module gate
 
-### Dashboard
+**Problem.** `OfficeModule` links offices to modules. No middleware checks this link before a module-specific route runs. An office without FireGuard can currently access FireGuard certificate routes.
 
-- Add scheduling and assignment UI
-- Add map-aware inspection list and detail support where location exists
-- Expand BPLO KPI cards and inspection overview filters
+**Resolution.**
 
-### Mobile
+1. Add `requireModule(moduleCode: string)` middleware that reads `OfficeModule` for the requesting office and returns 403 if the module is not enabled.
+2. Register this middleware on every module-specific route group.
+3. Cache `OfficeModule` lookups in a short-lived in-process map keyed by `officeId + moduleCode` to avoid a database round-trip per request.
 
-- Add auth flow with secure token storage
-- Add inspector home matching the intended app layout
-- Add assigned inspections list and detail screens
-- Add checklist and findings submission flow
-- Add GPS capture during inspection execution
+### Gap 3: Automated status transitions — **RESOLVED**
 
-Outcome:
+The `src/scripts/run-status-sweep.ts` script sweeps all three status transitions atomically with AuditLog writes. Run via `npm run sweep:status`. A cron schedule must still be wired to call it every 15 minutes in production (see Phase B).
 
-- One LGU can run BPLO inspections end to end across API, dashboard, and mobile.
+### Gap 4: Role model expansion
 
-## Phase 2: Field Operations and Compliance
+**Problem.** `UserRole` has only `ADMIN` and `INSPECTOR`. The target model has `super_admin`, `lgu_admin`, `office_supervisor`, `inspector`, `office_clerk`, `business_owner`, and `citizen`. Widening the enum is a breaking schema change unless done in a backward-compatible migration.
 
-### API
+**Resolution.**
 
-- Add attachment uploads and metadata
-- Add geo capture support
-- Add audit logging
-- Add rate limiting for auth and public endpoints
-- Add notifications outbox
+1. Add new roles to the `UserRole` enum in a Prisma migration that does not drop existing values.
+2. Map the two legacy values: `ADMIN` → `lgu_admin` as the default promoted role. Keep `ADMIN` as an alias during migration.
+3. Add a `roleProfiles` map in a new `src/lib/role-profiles.ts` that returns `{ accessScope, permissions[] }` keyed by role.
+4. Update the JWT payload builder and the `/auth/me` response to derive `roleProfile` from this map.
+5. Roll out role-aware guards in the API before rolling out role-aware navigation in the dashboard or mobile.
 
-### Dashboard
+### Gap 5: Certificate issuance integrity — **RESOLVED**
 
-- Add audit log viewer
-- Add richer inspection history and attachment previews
-- Add operational reports for supervisors
+`createFireSafetyCertificate()` now enforces all four conditions: inspection completion check, duplicate validity overlap check, server-generated `FSIC-{YYYY}-{officeCode}-{seq}` certificate number, and hardcoded `ISSUED` status. Callers can no longer supply a certificate number or status. The issuer authority check (Gap 4 dependency) remains deferred until `OFFICE_SUPERVISOR` role is implemented.
 
-### Mobile
+### Gap 6: Real-time feed — **RESOLVED**
 
-- Add camera capture and upload flow
-- Add offline queue and retry logic
-- Add sync status indicators
+`GET /api/v1/inspections/events` SSE endpoint is live. Events are sourced from the in-process `InspectionEventBus` publish calls wired into `assignInspection` and `updateInspectionStatus`. The endpoint accepts `Authorization: Bearer` header or `?token=` query param for `EventSource` compatibility. The dashboard `inspection-browser` subscribes via `useInspectionEventStream()` hook and invalidates the TanStack Query cache on `inspection.assigned` and `inspection.status_updated` events. A live connection badge is shown in the inspection queue card header.
 
-Outcome:
+**Remaining:** Expo push delivery as a second channel in the outbox worker (Phase D).
 
-- Inspectors can complete work reliably in the field, including weak-network conditions.
+### Gap 7: Mobile offline queue completeness — **RESOLVED**
 
-## Phase 3: Multi-LGU and Expanded RBAC
+The offline queue covers `checklist_result`, `finding`, and `attachment` action types via `QueuedFindingCreate` and `QueuedAttachmentUpload` in `lib/storage/attachment-upload-queue.ts`. The inspection detail screen replays both queues on reconnect with retry logic. Conflict resolution is append-only for findings and attachments.
 
-### API
+### Gap 8: Payment webhook processing
 
-- Add LGU, office, module, and user-office assignment models
-- Widen roles from `admin` and `inspector` to the target role model
-- Enforce scope-aware authorization for LGU and office boundaries
-- Add jurisdiction resolver middleware based on the CIRS scope pattern, but using InspectPH tenant and office scopes first
-- Add session inventory and revocation endpoints
+**Problem.** `PaymentRecord` with `provider = PAYMONGO` and a `providerPaymentId` can be created, but there is no webhook endpoint to receive payment status updates from PayMongo and transition the record to `PAID` or `FAILED`.
 
-### Dashboard
+**Resolution.**
 
-- Add users, offices, and module administration screens
-- Add role-aware menus and permissions
-- Add LGU and office scoped map and reporting filters
-- Add active sessions view and admin controls
+1. Add `POST /api/v1/payments/webhook/paymongo` as an unauthenticated route protected by HMAC signature verification using the PayMongo webhook secret.
+2. The handler verifies the signature first, then upserts the payment record status and writes an `AuditLog` record.
+3. The endpoint must return 200 immediately and process asynchronously if the reconciliation logic is expensive.
+4. Add integration tests using a test secret to cover signature verification and status transitions.
 
-### Mobile
+---
 
-- Make navigation role-aware
-- Restrict data access by assignment, office, and LGU scope
-- Keep map and schedule views constrained to the user scope returned by the API
+## Phased Roadmap
+
+### Phase A: Close Mobile Inspector Gap (active)
+
+Mobile is the largest uncovered surface. The API and dashboard already support all of the following.
+
+#### Mobile
+
+- Checklist execution: read assigned checklist templates, submit pass/fail/not-applicable per item with optional remarks
+- Inspection status transitions from mobile: start, complete
+- Findings submission: severity, title, description, corrective action, due date, and location capture
+- Camera capture: use `expo-image-picker` or `expo-camera` to attach photos to findings and inspections
+- Attachment upload: consume the existing upload intent flow from mobile
+- Offline queue: extend the existing queue to cover all field action types per Gap 7 above
+- Sync status indicator on inspector home and inspection detail screens
+- Expo push token registration at login; receive and display in-app notifications
 
 Outcome:
 
-- The platform can serve multiple LGUs and multiple offices safely.
+- An inspector can complete a full BPLO inspection end to end on mobile, including in low-connectivity conditions.
 
-## Phase 4: Prove the Generic Core with a Second Module
+### Phase B: Scope Enforcement and Role Expansion
 
-Recommended next module: `FireGuard Inspect`.
+#### API
 
-### API
+- Implement `resolveInspectScope()` middleware per Gap 1 above
+- Implement `requireModule()` middleware per Gap 2 above
+- Widen `UserRole` enum per Gap 4 above; add `roleProfiles` map
+- Add `archivedAt` to `Lgu`, `Office`, `Module`, `BusinessEstablishment`, and `PermitRecord`
+- Add status sweep script per Gap 3 above and connect to a cron schedule
 
-- Add FireGuard application data model
-- Reuse generic inspection workflows
-- Add FSIC-specific certificate and reporting support
+#### Dashboard
 
-### Dashboard
-
-- Add FireGuard operations pages reusing the BPLO patterns
-
-### Mobile
-
-- Add FireGuard inspection execution to the same inspector workflow shell
+- Replace role-string checks with `roleProfile.permissions` checks in menus and action buttons
+- Add `office_supervisor` and `lgu_admin` views that expose their respective scoped data only
+- Add map view for dashboard inspection queue using scoped `InspectionMapPoint` data
 
 Outcome:
 
-- The architecture proves it can support another office without large rewrites.
+- Multiple LGUs can use the platform safely. Data isolation is enforced at the API layer.
 
-## Geography Implementation Policy
+### Phase C: FireGuard Module End-to-End
 
-Use this order when geography work starts in the API:
+FireGuard is the recommended second module because its FSIC certificate workflow is already schema-complete. Proving it end-to-end validates the generic core.
 
-1. Add capture fields or a `GeoPoint` model for inspections, findings, attachments, and public reports.
-2. Add summary and map endpoints that return only coordinates already within the caller's allowed scope.
-3. Add `Lgu` and `Office` scoping with a CIRS-inspired jurisdiction resolver.
-4. Add optional reference geography entities only for modules that truly require them.
+#### API
 
-This keeps geography proportional to actual product needs instead of importing the full CIRS administrative hierarchy too early.
+- Implement `createFireSafetyCertificate()` service with full integrity enforcement per Gap 5 above
+- Add `requireModule('fireguard')` to all FSIC certificate routes
+- Add FireGuard-specific checklist templates seeded by module code `fireguard`
 
-## Phase 5: Public Participation Workflows
+#### Dashboard
 
-### API
+- Upgrade FireGuard browser from skeleton to a full operational page: inspection queue scoped to FireGuard-enabled offices, certificate issuance action, certificate status management
+- Add certificate print/PDF export
 
-- Add owner-facing endpoints for applications, findings, and certificates
-- Add citizen issue reporting
+#### Mobile
 
-### Dashboard
-
-- Add owner-support screens
-
-### Mobile
-
-- Add citizen reporting flows
-- Add business-owner permit views
+- Add FireGuard certificate view to the inspector inspection detail screen (read-only)
 
 Outcome:
 
-- InspectPH supports both internal operations and controlled external participation.
+- The platform supports two distinct modules (BPLO and FireGuard) on the same inspection core without duplication.
 
-## Phase 6: Remaining Modules and Hardening
+### Phase D: Real-Time Feed and Push Notifications
 
-Roll out the remaining modules in this order:
+#### API
+
+- Implement SSE stream endpoint per Gap 6 above
+- Wire Expo push delivery in the outbox worker as a second channel alongside in-app
+
+#### Dashboard
+
+- Subscribe to the SSE stream in `inspection-browser`; invalidate query cache on event receipt
+- Show a live indicator in the app shell when connected to the stream
+
+#### Mobile
+
+- Handle incoming Expo push notifications and route to the relevant inspection screen
+
+Outcome:
+
+- Supervisors see inspection status changes live. Inspectors receive assignment alerts without polling.
+
+### Phase E: Payment Webhook and Reconciliation
+
+#### API
+
+- Implement PayMongo webhook endpoint per Gap 8 above
+- Add webhook signature verification middleware
+
+#### Dashboard
+
+- Upgrade payment browser with reconciliation workflow: match provider reference to local record, flag discrepancies, manual reconcile action
+
+#### Mobile
+
+- Add business-owner payment status view (read-only)
+
+Outcome:
+
+- Payment collection and reconciliation are reliable and auditable.
+
+### Phase F: Public Participation and Owner Portal
+
+#### API
+
+- Add authenticated `business_owner` endpoints: own permits, own findings, own certificates, reinspection request
+- Secure issue reporting endpoints so `citizen` users can track their own submitted reports
+- Extend the `UserRole` enum with `business_owner` and `citizen` and issue JWTs for them via a separate registration flow
+
+#### Dashboard
+
+- Add owner-support screens for LGU clerks: permit application intake, fee schedule, owner contact log
+
+#### Mobile
+
+- Add business-owner home: active permits, pending findings, fee and payment status
+- Add citizen home: report submission, report status tracking
+
+Outcome:
+
+- InspectPH serves both internal operations and controlled external participation.
+
+### Phase G: Remaining Modules and Hardening
+
+Roll out remaining modules in this recommended order, validating each against the generic core before proceeding to the next:
 
 1. SanitaCheck
 2. BuildSure PH
 3. MarketGuard
 4. EcoWatch LGU
-5. ZoneVerify
+5. ZoneVerify (introduces reference geography if not already added)
 6. InfraInspect Pro
 7. AgriCheck PH
 8. TourismSafe Check
 9. AssessPro LGU
 
-Also complete:
+Also complete for production readiness:
 
-- Production-grade startup env validation
-- Sentry instrumentation
-- OpenAPI documentation exposure
-- Data retention and privacy controls
-- Backup and restore procedures
-- Operations dashboards and exports
-
-Outcome:
-
-- InspectPH becomes a production-ready multi-office LGU inspection platform.
-
-## Phase 7: Payments
-
-### API
-
-- Add payment adapter and webhook processing
-- Add provider-grade webhook verification and reconciliation hooks
-
-### Dashboard
-
-- Add payment reconciliation screens
-- Add owner-support payment lookup and payment operations tools
-
-### Mobile
-
-- Add business-owner payment views
+- Sentry instrumentation across API, dashboard, and mobile
+- OpenAPI documentation generated from express-validator schemas
+- Data retention policy and privacy controls per RA 10173
+- Database backup and point-in-time restore procedures
+- Operations monitoring dashboards and CSV/PDF export for reports
+- Performance load testing at target LGU transaction volumes
 
 Outcome:
 
-- Payment collection and reconciliation land after the core platform, public workflows, and module rollout are stable.
+- InspectPH is a production-ready multi-office LGU inspection platform across all 11 modules.
+
+---
 
 ## Milestones
 
-| Milestone | Summary                                       |
-| --------- | --------------------------------------------- |
-| `M1`      | BPLO MVP across API, dashboard, and mobile    |
-| `M2`      | Field capture, offline support, audit logging |
-| `M3`      | Multi-LGU support and full RBAC               |
-| `M4`      | Second module live on the generic core        |
-| `M5`      | Citizen and owner-facing public workflows     |
-| `M6`      | Remaining modules and operational hardening   |
-| `M7`      | Payments and reconciliation live              |
+| Milestone | Summary                                                          |
+| --------- | ---------------------------------------------------------------- |
+| `M1`      | Mobile inspector gap closed; full field execution flow on mobile |
+| `M2`      | Scope enforcement live; multi-LGU data isolation verified        |
+| `M3`      | FireGuard module end-to-end; generic core proven for two modules |
+| `M4`      | Real-time feed and Expo push notifications live                  |
+| `M5`      | Payment webhook and reconciliation live                          |
+| `M6`      | Business owner and citizen portal live                           |
+| `M7`      | All 11 modules live; production hardening complete               |
+
+---
 
 ## Immediate Execution Order
 
-The next implementation steps should follow this order:
+Items 1–6 from the previous plan are complete (archive actions, role filter, by-office API, office breakdown panel, inspection cache, SyncStatusBar). Items 1–7 of the mobile gap fix plan are also complete:
 
-1. Finish BPLO inspection endpoints in the API.
-2. Add dashboard auth and the BPLO operations shell.
-3. Add mobile auth and the inspector home plus assigned inspections.
-4. Add checklist, findings, attachments, and summary endpoints.
-5. Add offline sync and media capture in mobile.
-6. Expand RBAC and multi-LGU scoping only after BPLO is stable.
+1. ✅ Mobile: Fixed `normalizeAuthSession` to cover all 5 roles with correct `accessScope` and labels.
+2. ✅ Mobile: Added `refreshTokens()` to `lib/api.ts`; intercept 401s in `use-auth-session` to attempt a token refresh before signing the user out.
+3. ✅ Mobile: Added `getPublicPermitByNumber()` and `getPublicPaymentByReferenceNumber()` to `lib/api.ts`.
+4. ✅ Mobile: Added permit-number and payment-reference lookup sections to the public-services screen.
+5. ✅ Mobile: `SyncStatusBar` — added a 15-second `setInterval` so the pending count stays current while the screen is open.
+6. ✅ Mobile: Non-inspector home — replaced the bare "Read-only role" placeholder with scoped inspection summary metrics and quick-action links for `lgu_admin` and `office_supervisor` users.
+7. ✅ Mobile: Inspection list on home — added a "Load more" button that fetches the next page and appends to the existing list.
+8. ✅ Shared: Expanded `User.role` union and `roleProfile.accessScope` in `shared/types/api.ts` to cover all 5 roles.
+
+All three projects compile cleanly after this round.
 
 ## Guardrails
 
-- Do not introduce per-module route trees unless the module truly needs unique behavior.
-- Do not widen public contracts without updating shared types and architecture first.
-- Do not let dashboard or mobile bypass shared API shapes.
+- Do not introduce per-module route trees unless the module truly needs unique behavior. Checklist templates, the `module` field, and `requireModule()` middleware are the only module-differentiation points at the route level.
+- Do not widen public contracts without updating `shared/types/api.ts` and `shared/ARCHITECTURE.md` first.
+- Do not let dashboard or mobile bypass shared API shapes by re-deriving types locally.
+- Do not perform scope resolution on the client side. The API is the only authority for what data a user may access.
+- Do not block any delivery phase on reference geography tables. Operational geo capture is sufficient until a module explicitly requires reference data.
+- Do not transition entity statuses in the request path for time-based conditions (overdue, expired). Use the sweep worker only.
 - Do not copy CIRS features blindly; adapt them to inspection workflows only.
 - Do not start multiple new modules before BPLO and one second module prove the generic-core design.
