@@ -49,13 +49,20 @@ export interface AuditLogRecord {
     | "auth.login"
     | "auth.register"
     | "auth.session_revoked"
+    | "business.archived"
+    | "certificate.issued"
     | "finding.created"
     | "finding.resolved"
     | "inspection.assigned"
     | "inspection.checklist_result_recorded"
     | "inspection.created"
     | "inspection.status_updated"
+    | "issue_report.status_updated"
+    | "lgu.archived"
+    | "office.archived"
     | "payment.status_updated"
+    | "permit.archived"
+    | "permit.status_updated"
     | "reinspection.requested";
   actor?: Pick<User, "email" | "id" | "name" | "role">;
   createdAt: string;
@@ -63,9 +70,16 @@ export interface AuditLogRecord {
   entityId?: string;
   entityType:
     | "attachment"
+    | "business"
+    | "certificate"
     | "checklist_result"
     | "finding"
     | "inspection"
+    | "issue_report"
+    | "lgu"
+    | "office"
+    | "payment"
+    | "permit"
     | "user";
   id: string;
   summary: string;
@@ -73,7 +87,7 @@ export interface AuditLogRecord {
 
 export interface NotificationOutboxRecord {
   body: string;
-  channel: "in_app";
+  channel: "in_app" | "push";
   createdAt: string;
   entityId?: string;
   entityType?: "inspection";

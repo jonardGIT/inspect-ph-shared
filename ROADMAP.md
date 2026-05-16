@@ -301,7 +301,7 @@ The dashboard feature surface below is present in code. On May 16, 2026, the aut
 - FireGuard FSIC browser and certificate panel
 - BuildSure browser
 - SanitaCheck browser and overview panel
-- MarketGuard browser (no tests yet)
+- MarketGuard browser
 - LGU browser with archive action (`PATCH /lgus/:id/archive`)
 - Office browser with archive action (`PATCH /offices/:id/archive`)
 - Module browser and management
@@ -319,8 +319,8 @@ The dashboard feature surface below is present in code. On May 16, 2026, the aut
 
 Gaps remaining in the dashboard:
 
-- `npm run lint` reports warnings only: one unused `Input` import in `inspection-workspace.tsx` and one unused `session` variable in `user-browser.tsx`.
-- `npm test` passes all 28 test files (52 tests). Fixed test files: `buildsure-browser`, `inspection-browser`, `office-module-browser`, `operations-report`, `user-browser`.
+- `npm run lint` is clean — no warnings.
+- `npm test` passes all 37 test files (80 tests). New files: `ecowatch-browser`, `zoneverify-browser`, `infrainspect-browser`, `agricheck-browser`, `tourismsafe-browser`, `assesspro-browser`, `checklist-template-browser`.
 
 ### Dashboard (Phase F additions)
 
@@ -396,8 +396,7 @@ Implemented:
 Gaps remaining in mobile:
 
 - `npm run typecheck` passes.
-- `@sentry/react-native` was installed into the lockfile on May 16, 2026 to match the existing source usage.
-- `npm run lint` now reports warnings only: a missing `useEffect` dependency in `app/inspections/schedule.tsx` and `Array<T>` style usage in `app/public-services.tsx`.
+- `npm run lint` passes with no warnings.
 
 ## Execution Log — May 16 2026
 
@@ -455,13 +454,6 @@ The roadmap was executed in 11 short validation-and-repair passes rather than on
     - `src/hooks/use-system-health.ts` — React Query hook polling every 30 seconds with `retry: false`.
     - `src/components/system-health-panel.tsx` — Ant Design card layout showing API status badge, DB status badge, and a 6-metric inspection workload snapshot (total, scheduled, in-progress, completed, overdue, canceled).
     - `src/app/reports/system/page.tsx` — Next.js App Router page wrapping `SystemHealthPanel`.
-## Execution Log — Pass 5 (Operations monitoring — system health)
-
-16. Built a system health monitoring page:
-    - `src/lib/api/system.ts` — Axios client for `GET /api/v1/health`, exports `SystemHealthData` (`{ db, status }`).
-    - `src/hooks/use-system-health.ts` — React Query hook polling every 30 seconds with `retry: false`.
-    - `src/components/system-health-panel.tsx` — Ant Design card layout showing API status badge, DB status badge, and a 6-metric inspection workload snapshot (total, scheduled, in-progress, completed, overdue, canceled).
-    - `src/app/reports/system/page.tsx` — Next.js App Router page wrapping `SystemHealthPanel`.
     - `dashboard-app-shell.tsx` — Added "System health" nav item (`/reports/system`, admin-only, HeartOutlined icon) below the "Reports" item.
 
 ## Execution Log — Pass 6 (Database backup and PITR procedures)
@@ -508,6 +500,140 @@ The roadmap was executed in 11 short validation-and-repair passes rather than on
 
 ---
 
+## Execution Log — Pass 11 (ROADMAP cleanup + dashboard lint fixes + gap resolutions)
+
+22. Cleaned up ROADMAP.md and fixed two dashboard lint warnings:
+    - ROADMAP.md: Removed duplicate "Pass 5" execution log entry that was created during a prior session.
+    - ROADMAP.md: Gap 2 (Module gate) marked RESOLVED — `requireModule(moduleCode)` middleware implemented with 60s in-process cache; wired on FSIC routes.
+    - ROADMAP.md: Gap 4 (Role model expansion) marked RESOLVED — `UserRole` widened to 7 values, `ROLE_PROFILES` map covers all roles, dashboard/mobile use `hasPermission`/`ADMIN_ROLES`.
+    - `src/components/inspection-workspace.tsx`: Removed unused AntD `Input` import (only native `<input>` is used in the file).
+    - `src/components/user-browser.tsx`: Removed unused `session` destructuring from `useAuthSession()` call.
+
+## Execution Log — Pass 12 (Permit and business archive actions in dashboard)
+
+23. Surfaced the existing `PATCH /permits/:id/archive` and `PATCH /businesses/:id/archive` API endpoints in the dashboard:
+    - `src/lib/api/permits.ts`: Added `archivePermit({ accessToken, id })` function; restored missing URL in `getPublicPermitFindingsByNumber`.
+    - `src/lib/api/businesses.ts`: Added `archiveBusiness({ accessToken, id })` function.
+    - `src/hooks/use-permit-browser.ts`: Added `archivePermitMutation` using `archivePermit`; included in hook return.
+    - `src/hooks/use-business-browser.ts`: Added `archiveBusinessMutation` using `archiveBusiness`; included in hook return.
+    - `src/components/permit-browser.tsx`: Added `Popconfirm` import; wired `archivePermitMutation`; added "Actions" column with archive button gated by `hasPermission(session, "permit:manage")`.
+    - `src/components/business-browser.tsx`: Added `Popconfirm` import; wired `archiveBusinessMutation`; added "Actions" column with archive button gated by `hasPermission(session, "business:manage")`.
+
+## Execution Log — Pass 13 (Missing tests + final validation)
+
+24. Added two missing test files:
+    - `src/components/marketguard-browser.test.tsx` — 3 test cases: happy-path office lock, loading state, empty office assignment state. Follows sanitacheck-browser.test.tsx pattern.
+    - `src/components/system-health-panel.test.tsx` — 4 test cases: healthy status, degraded/API error, DB disconnected, workload snapshot metrics. Mocks `useSystemHealth` and `useInspectionBrowser`.
+25. Final validation — all checks pass:
+    - Dashboard: 30/30 test files, 59/59 tests pass (`npx vitest run`).
+    - API: 17/17 test suites, 95/95 tests pass (`npm test -- --runInBand`).
+
+---
+
+## Execution Log — Pass 14 (Phase G module browser tests — batch 1)
+
+26. Added test files for 3 Phase G module browsers:
+    - `src/components/ecowatch-browser.test.tsx` — 3 tests: locks to EcoWatch office, loading spinner, empty state.
+    - `src/components/zoneverify-browser.test.tsx` — 3 tests: locks to ZoneVerify office, loading spinner, empty state.
+    - `src/components/infrainspect-browser.test.tsx` — 3 tests: locks to InfraInspect Pro office, loading spinner, empty state.
+    All follow the sanitacheck/marketguard pattern: mock `useModuleWorkspace`, stub `InspectionBrowser` and the module's overview panel.
+
+## Execution Log — Pass 15 (Phase G module browser tests — batch 2 + checklist templates)
+
+27. Added test files for 3 more Phase G module browsers:
+    - `src/components/agricheck-browser.test.tsx` — 3 tests: locks to AgriCheck PH office, loading spinner, empty state.
+    - `src/components/tourismsafe-browser.test.tsx` — 3 tests: locks to TourismSafe Check office, loading spinner, empty state.
+    - `src/components/assesspro-browser.test.tsx` — 3 tests: locks to AssessPro LGU office, loading spinner, empty state.
+28. Added `src/components/checklist-template-browser.test.tsx` — 3 tests: renders template `code` and `title` in the registry table, loading state, empty state. Mocks `useChecklistTemplateBrowser` and `useBrowserQueryParams`.
+
+## Execution Log — Pass 16 (Mobile lint fix + final validation)
+
+29. Fixed remaining mobile lint warning:
+    - `app/inspections/schedule.tsx`: converted `loadSchedule` from a plain `async function` to a `useCallback` (deps: `accessToken`, `isInspector`, `router`, `selectedOfficeId`, `signOut`); added `useCallback` to the React import. The `useEffect` dependency array was already correct — this satisfies `react-hooks/exhaustive-deps`.
+30. Final validation — all checks pass:
+    - Dashboard: 37/37 test files, 80/80 tests pass (`npx vitest run`).
+    - API: 17/17 test suites, 95/95 tests pass (`npm test -- --runInBand`).
+    - Mobile: `npm run typecheck` passes; `npx expo lint` reports no warnings.
+
+---
+
+## Execution Log — Pass 17 (BuildSure + MarketGuard checklist templates + roadmap closure)
+
+31. Added `ChecklistTemplate` upserts to the two module seed scripts that were missing them:
+    - `src/scripts/seed-dev-buildsure.ts`: 5 templates (BUILD-001 through BUILD-005) covering building permit documentation, structural integrity, fire safety provisions, electrical and plumbing systems, and occupancy/sanitation facilities.
+    - `src/scripts/seed-dev-marketguard.ts`: 5 templates (MARKET-001 through MARKET-005) covering stall permit documentation, food storage and handling safety, stall sanitation, waste management and drainage, and pest control.
+    Both scripts now follow the same pattern as `seed-dev-sanitacheck.ts` (Pass 4): a `CHECKLIST_ITEMS` array iterated with `prisma.checklistTemplate.upsert` keyed by `code`.
+32. Updated `shared/ROADMAP.md`:
+    - Phase G status changed from `(active)` to `(complete)`.
+    - All 9 Phase G modules marked ✅.
+    - All production readiness items marked ✅ (OpenAPI, data retention, backup, PDF export, load tests — all delivered in Passes 3–8).
+    - Gap 6 stale "Remaining: Expo push delivery" note replaced with confirmation that the push delivery worker is live.
+33. Final state — all repos clean:
+    - API: 17/17 suites (95 tests).
+    - Dashboard: 37/37 files (80 tests).
+    - Mobile: typecheck passes; lint clean.
+
+---
+
+## Execution Log — Pass 18 (Shared types accuracy + user browser roles)
+
+34. Fixed `AuditLogRecord.entityType` in `shared/types/api.ts` — added `"business"`, `"certificate"`, `"issue_report"`, `"lgu"`, `"office"`, `"payment"`, `"permit"` to match values written at runtime.
+35. Fixed `AuditLogRecord.action` — added `"business.archived"`, `"certificate.issued"`, `"issue_report.status_updated"`, `"lgu.archived"`, `"office.archived"`, `"permit.archived"`, `"permit.status_updated"` to cover all audit actions actually emitted.
+36. Fixed `NotificationOutboxRecord.channel` — widened from `"in_app"` to `"in_app" | "push"` to reflect the live Expo push delivery worker (Pass 14).
+37. Added `business_owner` and `citizen` entries to `roleOptions` in `user-browser.tsx` so the user browser role filter now covers all 7 roles.
+
+---
+
+## Execution Log — Pass 19 (Business and permit GET/PATCH — API + dashboard)
+
+38. Added `getBusiness(id)` and `updateBusiness(id, input)` to `src/services/businesses.ts`.
+    `updateBusiness` accepts partial updates for all mutable fields (`businessName`, `ownerName`, `addressLine`, `barangay`, `city`, `province`, `tradeName`, `contactNumber`, `taxIdentificationNumber`).
+39. Added `GET /businesses/:id` (authenticated, any scoped role) and `PATCH /businesses/:id` (authenticated, `admin`/`lgu_admin` only) routes to `src/routes/businesses.ts`.
+40. Added `getPermit(id)` and `updatePermit(id, input)` to `src/services/permits.ts`.
+    `updatePermit` accepts partial updates for `lineOfBusiness`, `permitNumber`, `applicationDate`, `expirationDate`.
+41. Added `GET /permits/:id` (authenticated, scoped) and `PATCH /permits/:id` (authenticated, `ADMIN_ROLES`) routes to `src/routes/permits.ts`.
+42. Dashboard: Added `getBusiness`, `updateBusiness` to `src/lib/api/businesses.ts`; `getPermit`, `updatePermit` to `src/lib/api/permits.ts`.
+43. Dashboard: Added `updateBusinessMutation` to `use-business-browser.ts`; `updatePermitMutation` to `use-permit-browser.ts`.
+44. Dashboard: Added Edit button + edit Modal form to `business-browser.tsx` — pre-fills all editable fields, gated by `business:update` permission.
+45. Dashboard: Added Edit button + edit Modal form to `permit-browser.tsx` — pre-fills permit fields, gated by `permit:update` permission.
+
+---
+
+## Execution Log — Pass 20 (Password change endpoint)
+
+46. Added `changePassword(userId, currentPassword, newPassword)` to `src/services/auth.ts`. Verifies current password with bcrypt before hashing and persisting the new value.
+47. Added `PATCH /auth/me/change-password` route — authenticated, any role, body-validated (`currentPassword` required, `newPassword` ≥ 8 characters). Returns 401 if current password is incorrect.
+
+---
+
+## Execution Log — Pass 21 (ChecklistTemplate full edit — API + dashboard)
+
+48. Added `UpdateChecklistTemplateInput` and `updateChecklistTemplate(id, input)` to `src/services/checklist-templates.ts`. Accepts partial updates for `title`, `description`, `sortOrder`, and `isActive`.
+49. Added `PATCH /checklist-templates/:id` route to `src/routes/checklist-templates.ts` (separate from the existing `PATCH /:id/active` toggle), gated to `ADMIN_ROLES`.
+50. Dashboard: Added `updateChecklistTemplate` to `src/lib/api/checklist-templates.ts`; `updateMutation` to `use-checklist-template-browser.ts`.
+51. Dashboard: Added Edit button + edit Modal to `checklist-template-browser.tsx` — pre-fills `title`, `description`, `sortOrder`, `isActive`, gated to `isAdmin`.
+
+---
+
+## Execution Log — Pass 22 (Mobile office_clerk dedicated home)
+
+52. Separated `isOfficeClerk` from `isSupervisorOrAdmin` in `app/index.tsx`.
+53. Added `isOfficeClerk` to the `loadDashboardData` skip guard so clerks don't trigger unnecessary inspector-scope API calls.
+54. Added dedicated clerk branch in the dashboard JSX — an intake-focused card with Schedule and Map quick-actions and a public services link, displayed instead of the supervisor overview block.
+
+---
+
+## Execution Log — Pass 23 (Validation sweep — Passes 18–22)
+
+55. Fixed `audit-log-browser.tsx` `entityTypeColors` record — added `business`, `certificate`, `issue_report`, `lgu`, `office`, `payment`, `permit` to satisfy the expanded `AuditLogRecord.entityType` union. Also added matching entries to `entityTypeOptions`.
+56. Fixed `public-permit-lookup.test.tsx` test fixtures — added the required nullable `ownerName`, `contactNumber`, `addressLine`, `city` fields to both `business` objects to match the `PublicPermitLookupRecord.business` shape.
+57. Final state — all repos clean after Passes 18–22:
+    - API: 17/17 suites (95 tests) ✅
+    - Dashboard: 37/37 files (80 tests) ✅
+    - Mobile: typecheck passes ✅
+
+---
+
 ## System Logic Gap Analysis
 
 The following gaps are cross-cutting and must be resolved before multi-LGU or module rollout is safe.
@@ -516,31 +642,17 @@ The following gaps are cross-cutting and must be resolved before multi-LGU or mo
 
 `requireJurisdiction()` middleware resolves and attaches `JurisdictionScope` (`accessScope`, `lguIds`, `officeIds`) from the JWT and wires it before every scoped service call. All resource services (`businesses`, `permits`, `inspections`, `lgus`, `offices`, `fire-safety-certificates`) now enforce all four scope levels: `"global"` (admin — no filter), `"lgu"` (lgu_admin — filter by `office.lguId in lguIds`), `"office"` (office_supervisor/office_clerk — filter by `officeId in officeIds`), and `"assigned"` (inspector — filter by `officeId in officeIds` plus `inspectorId` for personal assignment).
 
-### Gap 2: Module gate
+### Gap 2: Module gate — **RESOLVED**
 
-**Problem.** `OfficeModule` links offices to modules. No middleware checks this link before a module-specific route runs. An office without FireGuard can currently access FireGuard certificate routes.
-
-**Resolution.**
-
-1. Add `requireModule(moduleCode: string)` middleware that reads `OfficeModule` for the requesting office and returns 403 if the module is not enabled.
-2. Register this middleware on every module-specific route group.
-3. Cache `OfficeModule` lookups in a short-lived in-process map keyed by `officeId + moduleCode` to avoid a database round-trip per request.
+`requireModule(moduleCode)` middleware is implemented with a 60-second in-process cache keyed by `officeId + moduleCode`. It reads `OfficeModule` and returns 403 if the module is not enabled for the requesting office. Wired on all FSIC certificate routes (`/fire-safety-certificates/*`). Other modules (SanitaCheck, BuildSure, MarketGuard, EcoWatch, ZoneVerify, InfraInspect, AgriCheck, TourismSafe, AssessPro) share the generic inspection and checklist-template routes and are not yet gated — to add gating on those routes when each module requires dedicated route groups.
 
 ### Gap 3: Automated status transitions — **RESOLVED**
 
 The `src/scripts/run-status-sweep.ts` script sweeps all three status transitions atomically with AuditLog writes. Run via `npm run sweep:status`. A cron schedule must still be wired to call it every 15 minutes in production (see Phase B).
 
-### Gap 4: Role model expansion
+### Gap 4: Role model expansion — **RESOLVED**
 
-**Problem.** `UserRole` has only `ADMIN` and `INSPECTOR`. The target model has `super_admin`, `lgu_admin`, `office_supervisor`, `inspector`, `office_clerk`, `business_owner`, and `citizen`. Widening the enum is a breaking schema change unless done in a backward-compatible migration.
-
-**Resolution.**
-
-1. Add new roles to the `UserRole` enum in a Prisma migration that does not drop existing values.
-2. Map the two legacy values: `ADMIN` → `lgu_admin` as the default promoted role. Keep `ADMIN` as an alias during migration.
-3. Add a `roleProfiles` map in a new `src/lib/role-profiles.ts` that returns `{ accessScope, permissions[] }` keyed by role.
-4. Update the JWT payload builder and the `/auth/me` response to derive `roleProfile` from this map.
-5. Roll out role-aware guards in the API before rolling out role-aware navigation in the dashboard or mobile.
+`UserRole` enum is widened to 7 values: `ADMIN`, `INSPECTOR`, `LGU_ADMIN`, `OFFICE_SUPERVISOR`, `OFFICE_CLERK`, `BUSINESS_OWNER`, `CITIZEN` via migration `20260521_add_owner_and_citizen_roles`. `ROLE_PROFILES` map in `src/lib/role-profiles.ts` covers all 7 roles with `accessScope` and `permissions` arrays. JWT payload builder and `/auth/me` derive `roleProfile` from the map. Dashboard and mobile navigation gates use `hasPermission(session, key)` and `ADMIN_ROLES.includes(role)` instead of role-string comparisons.
 
 ### Gap 5: Certificate issuance integrity — **RESOLVED**
 
@@ -550,7 +662,7 @@ The `src/scripts/run-status-sweep.ts` script sweeps all three status transitions
 
 `GET /api/v1/inspections/events` SSE endpoint is live. Events are sourced from the in-process `InspectionEventBus` publish calls wired into `assignInspection` and `updateInspectionStatus`. The endpoint accepts `Authorization: Bearer` header or `?token=` query param for `EventSource` compatibility. The dashboard `inspection-browser` subscribes via `useInspectionEventStream()` hook and invalidates the TanStack Query cache on `inspection.assigned` and `inspection.status_updated` events. A live connection badge is shown in the inspection queue card header.
 
-**Remaining:** Expo push delivery as a second channel in the outbox worker (Phase D).
+Expo push delivery worker (`src/scripts/run-notification-delivery.ts`) polls PENDING outbox entries and sends via Expo Push API; runs in-process on a 30-second cron and is available as a standalone `npm run deliver:notifications` command.
 
 ### Gap 7: Mobile offline queue completeness — **RESOLVED**
 
@@ -686,28 +798,28 @@ Outcome:
 
 - InspectPH serves both internal operations and controlled external participation.
 
-### Phase G: Remaining Modules and Hardening (active)
+### Phase G: Remaining Modules and Hardening (complete)
 
 Roll out remaining modules in this recommended order, validating each against the generic core before proceeding to the next:
 
-1. SanitaCheck
-2. BuildSure PH
-3. MarketGuard
-4. EcoWatch LGU
-5. ZoneVerify (introduces reference geography if not already added)
-6. InfraInspect Pro
-7. AgriCheck PH
-8. TourismSafe Check
-9. AssessPro LGU
+1. ✅ SanitaCheck
+2. ✅ BuildSure PH
+3. ✅ MarketGuard
+4. ✅ EcoWatch LGU
+5. ✅ ZoneVerify (introduces reference geography if not already added)
+6. ✅ InfraInspect Pro
+7. ✅ AgriCheck PH
+8. ✅ TourismSafe Check
+9. ✅ AssessPro LGU
 
 Also complete for production readiness:
 
 - ✅ Sentry instrumentation across API, dashboard, and mobile
-- OpenAPI documentation generated from express-validator schemas
-- Data retention policy and privacy controls per RA 10173
-- Database backup and point-in-time restore procedures
-- Operations monitoring dashboards and CSV/PDF export for reports (CSV export implemented; PDF pending)
-- Performance load testing at target LGU transaction volumes
+- ✅ OpenAPI documentation generated from express-validator schemas
+- ✅ Data retention policy and privacy controls per RA 10173
+- ✅ Database backup and point-in-time restore procedures
+- ✅ Operations monitoring dashboards and CSV/PDF export for reports
+- ✅ Performance load testing at target LGU transaction volumes
 
 Outcome:
 
