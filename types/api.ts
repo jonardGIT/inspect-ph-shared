@@ -54,6 +54,8 @@ export interface AuditLogRecord {
     | "cap.status_updated"
     | "certificate.issued"
     | "finding.created"
+    | "finding.dispute_resolved"
+    | "finding.dispute_submitted"
     | "finding.resolved"
     | "inspection.assigned"
     | "inspection.checklist_result_recorded"
@@ -555,3 +557,84 @@ export interface BulkAssignInspectionInput {
   inspectionIds: string[];
   inspectorId: string;
 }
+
+// ---------------------------------------------------------------------------
+// Finding disputes
+// ---------------------------------------------------------------------------
+
+export interface FindingDisputeRecord {
+  id: string;
+  findingId: string;
+  reason: string;
+  status: "pending" | "reviewing" | "upheld" | "overturned";
+  resolution?: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  finding: {
+    id: string;
+    title: string;
+    severity: FindingRecord["severity"];
+    inspectionId: string;
+  };
+  disputedBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  resolvedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Payment reconciliation report
+// ---------------------------------------------------------------------------
+
+export interface PaymentReconciliationByOffice {
+  officeId: string;
+  officeName: string;
+  officeCode: string;
+  lguId: string;
+  paidCount: number;
+  paidAmountInMinor: number;
+  unpaidCount: number;
+  unpaidAmountInMinor: number;
+}
+
+export interface PaymentReconciliationReport {
+  fromDate: string;
+  toDate: string;
+  totalPaidCount: number;
+  totalPaidAmountInMinor: number;
+  totalUnpaidCount: number;
+  totalUnpaidAmountInMinor: number;
+  agingUnpaidCount: number;
+  agingUnpaidAmountInMinor: number;
+  byOffice: PaymentReconciliationByOffice[];
+}
+
+// ---------------------------------------------------------------------------
+// Certificate public verification
+// ---------------------------------------------------------------------------
+
+export interface CertificateVerificationResult {
+  valid: boolean;
+  certificateNumber: string;
+  business?: string;
+  issuedAt?: string;
+  expiresAt?: string;
+  status?: FireSafetyCertificateRecord["status"];
+}
+
+// ---------------------------------------------------------------------------
+// Audit log extensions for new actions
+// ---------------------------------------------------------------------------
+
+// Re-export AuditLogRecord with extended action union — consumers should use this
+export type AuditLogAction =
+  | AuditLogRecord["action"]
+  | "finding.dispute_submitted"
+  | "finding.dispute_resolved";

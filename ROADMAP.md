@@ -1053,3 +1053,253 @@ Delivers the high-impact citizen-facing and operational-efficiency features iden
 
 - `app/index.tsx` — business owner home: "Apply for Renewal" action card added
 - `app/public-services.tsx` — CAP list section for business_owner; acknowledge action inline
+
+---
+
+## Strategic Review — May 16 2026
+
+This section is a candid review of the platform's plan and posture, plus the next-iteration roadmap. It is written to be read by product, engineering, and LGU stakeholders together. Items below are advisory until promoted into a numbered Execution Log pass.
+
+### 1. Critique of the current roadmap
+
+Strengths to keep:
+
+- Clear one-engine-many-overlays product shape; the module gating story is principled.
+- A real RBAC model with four scope levels, not just role strings.
+- Offline-first mobile pattern with an explicit replay order and conflict policy.
+- Soft delete, audit log, payment webhook HMAC, and SSE are already production-grade primitives, not aspirations.
+- Execution logs make progress auditable per pass; rare in LGU-tech projects.
+
+Gaps and weaknesses the roadmap does not yet address:
+
+1. **No tenant onboarding story.** The roadmap assumes LGUs exist but never describes how a new LGU is provisioned, billed, branded, trained, or off-boarded. Without this, multi-LGU is a schema feature, not a product.
+2. **No data lifecycle and retention policy beyond backups.** RA 10173 (Data Privacy Act) requires defined retention, lawful basis, data subject rights (access, correction, erasure, portability), and a privacy notice surface. Backups are documented; the *operational* privacy workflow is not.
+3. **No incident response or status page.** Sentry is wired, but there is no on-call rotation, severity matrix, public status page, customer comms template, or post-mortem cadence.
+4. **No SLO / SLA definitions.** Latency thresholds exist only in k6 scripts. There is no documented uptime target, error budget, or degraded-mode behavior contract with LGUs.
+5. **Search is structural, not semantic.** Inspections and businesses are filtered by enums and IDs. There is no full-text search across findings, no fuzzy business-name dedupe, and no cross-module global search bar.
+6. **Reporting is descriptive, not analytical.** Current reports count statuses. There is no trend analysis, no compliance scoring per business, no inspector productivity benchmark, and no LGU-level KPI dashboard for mayors and council oversight.
+7. **No public-trust surface.** Citizens can submit issue reports and look up permits, but there is no transparent "open data" page (e.g., aggregate compliance rates per barangay) — a major differentiator vs. paper systems.
+8. **Mobile resilience claims are partly aspirational.** Offline queue covers checklist, findings, attachments, but does not yet cover: signature capture replay, route-planning while offline, voice notes, or queued certificate previews.
+9. **No accessibility commitment.** No WCAG 2.1 AA target, no screen-reader testing, no Tagalog/Bisaya/Ilocano localization plan. LGU staff and citizens span a wide ability and literacy range.
+10. **Module overlays risk drift.** Each module has a browser + overview panel, but there is no shared "ModulePage" contract enforcing consistent UX (KPIs → checklist registry → recent inspections → settings). Drift will harden over time.
+11. **No integration roadmap with PH government systems.** BIR (taxpayer ID validation), DTI/SEC (business name registry), DICT eGov PH stack, LRA (titles for ZoneVerify), PSA (business statistics), PhilSys (citizen identity for issue reports), DOH FDA (SanitaCheck), DENR (EcoWatch), DPWH (InfraInspect). None of these are mentioned.
+12. **No appeal / dispute workflow.** Findings can be created but a business owner cannot formally contest a finding, request mediation, or escalate to an LGU ombudsman record.
+13. **No certificate verification by third parties.** Banks, insurers, and renters cannot independently verify an FSIC. A signed QR code on the certificate that resolves to a public read-only page is a small but high-trust feature.
+14. **No revenue-side analytics.** PayMongo is wired, but there is no fee collection report, no aging receivables view, no reconciliation export for the LGU treasurer.
+15. **No vendor lock-in mitigation note.** Supabase, PayMongo, Expo, and Sentry are listed; what happens if one is replaced? A short portability statement per dependency is missing.
+16. **Testing pyramid is shallow on E2E.** Unit and integration coverage are strong; there is no Playwright or Detox end-to-end suite simulating an inspector logging in, doing a checklist, syncing offline, and the supervisor approving.
+17. **No formal threat model.** OWASP awareness exists implicitly, but there is no STRIDE table, no documented attacker personas (disgruntled employee, fraudulent business owner, scraping competitor, hostile LGU), and no abuse-case test list.
+
+### 2. Innovative, high-impact differentiators
+
+These are features competitors typically do not ship and that map cleanly onto InspectPH's data model.
+
+1. **AI-assisted finding drafting.** From a photo + a checklist failure, suggest a finding title, severity, citation (which ordinance/section), and recommended corrective action. Inspector edits; system stores both raw and edited versions for audit. Reduces field paperwork by 40–60% based on iAuditor and Workplace benchmarks.
+2. **AI photo triage.** On capture, classify image as "evidence of violation", "general site context", "unclear / retake suggested". Surfaces retake hints before the inspector leaves the site — the #1 reason re-visits happen.
+3. **Voice-to-finding.** Inspector dictates in Tagalog/English; transcribed, structured into a finding, geotag attached. Massive UX unlock for older inspectors and during rain.
+4. **Compliance Score per business.** Rolling 12-month weighted score across all modules a business participates in. Visible to the business owner, to supervisors, and (opt-in) on a public registry. Creates a market incentive for compliance, not just punishment.
+5. **Predictive re-inspection routing.** ML model ranks businesses by predicted non-compliance, given history, complaint density nearby, time since last inspection, and seasonality (e.g., fire risk spikes in summer). Inspector route is auto-optimized by geo and risk.
+6. **Citizen heatmap with privacy guard.** Aggregate issue reports by 250m hex grid; show density to LGU and public; never expose individual report locations. Differentiates from Granicus-style "see the report" surfaces that leak PII.
+7. **Verifiable certificates (QR + digital signature).** FSIC and other certificates carry a signed JWS QR. Public verification URL renders a tamper-evident page. Banks, landlords, BPLO inspectors from neighboring LGUs can verify without an account.
+8. **Cross-LGU mutual recognition.** With consent, a business operating in two LGUs can grant its second LGU read-only access to its FSIC and compliance score, eliminating duplicate inspections — a real productivity win that no PH LGU system offers today.
+9. **Inspector "buddy" co-signing.** Two-inspector sign-off mode for high-risk findings (demolition orders, closure orders). Mobile UX captures both signatures and devices in the audit trail. Reduces collusion and protects honest inspectors.
+10. **Anonymous tip channel with proof-of-life.** Citizen submits an anonymous tip; system issues a one-time claim token so the reporter can later prove ownership and follow up without revealing identity. Differentiates from "anonymous = abandoned" reporting.
+11. **Business owner self-service pre-inspection.** Owner runs the same checklist on themselves before the official visit; results are advisory only but reduce failed inspections. Builds trust and is a strong onboarding hook.
+12. **Inspection "twin" simulation.** Before deploying a new ordinance, run it as a parallel scoring rule on the last 90 days of inspections to see how many businesses would fail. Lets LGUs legislate with evidence.
+13. **Climate-and-disaster mode.** Auto-prioritize inspections after a typhoon, earthquake, or flood alert from PAGASA/PHIVOLCS APIs; queue a "post-disaster sweep" checklist per affected barangay.
+14. **Marketplace for checklist templates.** LGUs publish, fork, and rate each other's templates. Best practice spreads from progressive LGUs (Pasig, Quezon City, Iloilo) to smaller municipalities at zero cost.
+15. **Inspector wellness signals.** Aggregate (never individual) metrics on inspection duration, after-hours work, and pending queue depth, surfaced to supervisors. Hedge against burnout in understaffed offices.
+
+### 3. Usability and UX improvements
+
+Inspector mobile (highest leverage):
+
+- **One-thumb mode.** Field inspectors hold a clipboard, a tape measure, or an umbrella. Every primary action (advance checklist item, capture photo, mark finding) must be reachable with the right thumb on a 6.5" screen.
+- **Big-touch failure mode.** When sun glare hits the screen, taps become imprecise. Provide a high-contrast "field mode" toggle with 56dp+ targets and reduced color palette.
+- **Photo-first finding flow.** Default the finding creation flow to camera open, not to a form. The form is filled by inference from the photo and checklist context.
+- **Save without thinking.** Every input auto-saves to the offline queue within 500ms. Remove all "Save" buttons except for terminal status transitions.
+- **Reassurance, not just spinners.** Show "saved locally — will sync when online" instead of generic offline banners.
+- **Skeletons over spinners.** Use shape-of-content skeletons everywhere; reduces perceived latency by ~30%.
+
+Dashboard (supervisor and admin):
+
+- **Command palette (Ctrl/Cmd+K).** Jump to any business, inspection, permit, or page; admins live in this.
+- **Persistent filters per user.** Remember the last filter set per browser page; restore on return.
+- **Bulk actions with preview.** Multi-select inspections to reassign, reschedule, or export; show a dry-run diff before commit.
+- **Empty states that teach.** Every empty list explains *why* it is empty and the next concrete action ("No overdue inspections — try widening the date range or check the OVERDUE sweep ran in the last 15 minutes").
+- **Inline help anchored to the data.** Tooltips reference the actual ordinance, the actual checklist version, the actual SLA.
+- **Density toggle.** Compact rows for power users; comfortable rows for occasional users.
+
+Business owner and citizen:
+
+- **One-page status timeline** for permit applications: submitted → fee paid → inspection scheduled → inspected → certificate issued. Real-time, mirroring delivery-app tracking UX.
+- **SMS fallback notifications** for users without smartphones or push permissions. Critical in rural LGUs.
+- **Plain-language findings.** Auto-generate a non-legal summary of each finding for the business owner ("You need to install a fire extinguisher near the kitchen") alongside the formal citation.
+
+Accessibility and localization:
+
+- WCAG 2.1 AA target; automated axe-core checks in dashboard CI.
+- Tagalog and Cebuano locale at minimum; pull-quote labels for ordinance text remain canonical in English.
+- Color is never the only signal; every status has a shape or icon.
+
+### 4. Benchmark against existing systems
+
+| System                          | Domain                          | What they do well                                                                | What InspectPH still lacks compared to them                                                            |
+| ------------------------------- | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| SafetyCulture (iAuditor)        | Global inspection app           | Industry-best mobile checklist UX, template marketplace, AI photo analysis, BI   | Photo AI, template marketplace, prebuilt analytics, integrations marketplace                           |
+| Accela Civic Platform           | US municipal permitting         | Configurable workflows, citizen portal, agency-to-agency referrals               | Cross-agency referrals, formal workflow designer, GIS plan-review overlays                             |
+| Tyler Tech EnerGov              | US permitting and inspection    | Deep parcel + GIS integration, mature plan-review, fee schedules                 | Parcel/GIS layer, dynamic fee schedules, plan-review markup tools                                      |
+| OpenGov Permitting              | US municipal                    | Friendly applicant UX, low-code form builder, public records portal              | Low-code form builder, public records / FOI portal                                                     |
+| Granicus govDelivery / govMeetings | Citizen engagement           | Multi-channel notifications (email, SMS, push), public meeting transparency      | SMS channel, broadcast notifications, public meeting and ordinance archives                            |
+| GoCanvas / ProntoForms          | Generic field forms             | Drag-drop form builder, offline-first, simple pricing                            | Form builder for non-developers, native PDF generation per template                                    |
+| Esri ArcGIS Field Maps          | GIS-native field work           | Best-in-class offline maps, parcel attribute editing, route optimization         | Offline tiled maps, parcel editing, optimized routing                                                  |
+| iLand / PlanGrid (Autodesk)     | Construction inspection         | Plan-overlay markup, BIM links                                                   | Drawing/plan markup for BuildSure                                                                      |
+| LandlordStudio / RentRedi       | Property compliance lite        | Self-service compliance, document vault, reminders                               | Document vault per business, automated renewal reminders with calendar invites                         |
+| Bisaya/Tagalog civic apps (eGovPH, Ph BIR, PhilSys) | National PH stack | Trust anchor through OGCIO identity, payment, and registry APIs                | Integration with PhilSys, BIR, DTI/SEC, LRA, DICT eGovPH SSO                                           |
+
+Key takeaways:
+
+- The biggest UX gap is mobile checklist polish and photo handling vs. iAuditor.
+- The biggest functional gap is GIS + parcel intelligence vs. Esri/Tyler/Accela.
+- The biggest trust gap is integration with national identity and registry systems (PhilSys, BIR, DTI/SEC, LRA).
+- The biggest delivery-model gap is a no-code template/form/workflow builder so LGUs can self-serve without engineering.
+
+### 5. Next-iteration roadmap
+
+The roadmap below is sequenced so each phase delivers a deployable vertical slice. Each phase has a definition-of-done that closes one of the gaps in section 1.
+
+#### Phase H — Trust, transparency, and compliance hardening
+
+Goal: make InspectPH defensible under audit (NPC, COA) and trustworthy to LGUs, businesses, and citizens.
+
+1. **Data privacy operations.** Privacy notice surface, data subject request inbox (access, correction, erasure), retention policy per entity (`Inspection`: 10y; `Attachment`: 5y; `AuditLog`: 7y; `IssueReport` PII: 2y then anonymize), automated purge job, NPC breach response runbook.
+2. **Tenant lifecycle.** `LguOnboarding` wizard for `super_admin`: brand assets, modules enabled, initial offices, initial users, training checklist, go-live toggle. Off-boarding includes a signed data export + verified deletion certificate.
+3. **SLO / SLA contract.** Document target uptime (99.5% for API, 99.0% for dashboard), p95 latency, RPO 1h / RTO 4h, degraded-mode behavior. Publish to LGUs as part of MSA.
+4. **Status page and incident response.** Public status page (statuspage.io or self-hosted), severity matrix, on-call rotation, postmortem template, customer comms template.
+5. **Threat model.** STRIDE pass on auth, payments, attachments, public lookups, webhooks. Add abuse-case tests to API suite.
+6. **Verifiable certificates.** Signed-JWS QR on FSIC; public verifier page at `/verify/<jws>` resolving to tamper-evident record. Extend to other certificate types as they ship.
+7. **Treasurer reconciliation report.** Daily/weekly fee collection report by office and module, CSV/PDF export, aging receivables view for unpaid fees with reminders.
+
+Definition of done: an LGU can pass an NPC compliance review and a COA audit using only documents and exports the platform produces.
+
+#### Phase I — Field UX excellence
+
+Goal: close the iAuditor-grade UX gap on mobile and make the dashboard a tool supervisors *want* to use.
+
+1. **Photo-first finding flow** with offline-safe camera, EXIF stripping for PII, and retake hints.
+2. **AI photo triage** (on-device first pass; server-side cross-check for evidence). Use a quantized open model so it runs on mid-range Android devices.
+3. **Voice-to-finding** with Tagalog and English transcription; fallback to manual typing.
+4. **Field mode** toggle: high-contrast, big-touch, reduced palette.
+5. **Auto-save and sync reassurance** across every form; remove explicit save buttons except for status transitions.
+6. **Command palette** (Cmd+K) on dashboard.
+7. **Persistent per-user filters** and **bulk actions with preview** on dashboard browsers.
+8. **WCAG 2.1 AA pass** on dashboard with axe-core in CI; mobile passes RN a11y lint.
+9. **Tagalog locale** end-to-end (dashboard, mobile, notification templates).
+
+Definition of done: a first-time inspector completes a 10-item checklist with one photo finding in under 4 minutes, offline, with no training, and a supervisor can triage today's queue without leaving the keyboard.
+
+#### Phase J — Intelligence and automation
+
+Goal: turn the data the platform already collects into decisions LGUs can act on.
+
+1. **Compliance Score** per business: weighted rolling 12-month score across modules, surfaced to owner/supervisor and (opt-in) public registry.
+2. **AI-assisted finding drafting** with citation suggestion against an ordinance corpus per LGU.
+3. **Predictive re-inspection routing**: rank businesses by risk; route optimizer integrated with the schedule screen.
+4. **Inspection twin simulator** for new ordinances against last-90-day data.
+5. **KPI dashboard** for mayors and council: inspections by module, compliance trend, revenue collected, citizen satisfaction proxy, inspector utilization (aggregated, never individual punitive).
+6. **Inspector wellness signals** (aggregated only).
+7. **Anomaly detection** on payment webhooks (replay, duplicate, mismatched amount) with auto-quarantine.
+
+Definition of done: a mayor opens one page and sees the LGU's compliance posture trend, top 5 at-risk businesses this week, and revenue collected to date, refreshed daily.
+
+#### Phase K — Ecosystem and platform extensibility
+
+Goal: stop being one app, start being a platform LGUs and partners build on.
+
+1. **Checklist template marketplace** with fork, version, and rating; namespaced per LGU; promotable to platform-default.
+2. **Low-code form builder** for module-specific application fields (drag-drop, JSON schema under the hood).
+3. **Public open-data endpoints** (compliance rates per barangay, aggregate fees collected, inspection counts) with rate-limited, attribution-required licensing.
+4. **Webhook outbound** for LGU integrations (treasury, citizen relationship systems): inspection completed, finding raised, certificate issued, payment received.
+5. **OAuth2 third-party app authorization** so partners (banks, insurers) can read certificates with owner consent.
+6. **Cross-LGU mutual recognition** of FSIC and compliance score via signed payloads + consent flow.
+7. **National integrations.** PhilSys (citizen identity), BIR TIN validation, DTI/SEC business-name resolver, LRA parcel lookup (ZoneVerify), PAGASA/PHIVOLCS disaster triggers (climate mode), DICT eGovPH SSO.
+
+Definition of done: a third LGU can adopt the platform without engineering involvement, importing a peer's checklists, branding, and modules from the marketplace, and a bank can verify an FSIC programmatically.
+
+#### Phase L — Resilience, sustainability, and long-term trust
+
+Goal: ensure the platform survives founders, vendors, and political cycles.
+
+1. **Vendor portability**: documented replacement plan and adapter seams for Supabase, PayMongo, Expo, Sentry. One adapter swap per quarter as a fire drill.
+2. **Disaster recovery drill** quarterly: restore latest backup into a fresh environment, run smoke tests, measure RTO/RPO. Publish results.
+3. **End-to-end tests**: Playwright for dashboard (login → schedule → complete → certificate) and Detox for mobile (login → offline checklist → sync → finding signed).
+4. **Chaos engineering lite**: kill the database for 60s in staging weekly, ensure SSE reconnects, queues drain, no audit gaps.
+5. **Cost transparency**: per-LGU cost dashboard (compute, storage, push, payments) to inform pricing and capacity planning.
+6. **Public governance**: a published changelog, an LGU advisory council that reviews the roadmap quarterly, a security@ inbox with a 72-hour acknowledgement SLA.
+7. **Open-source the core?** Evaluate making the inspection engine open-source under a public-benefit license (e.g., AGPL or PolyForm) to lock in trust and prevent monopoly capture; keep AI, integrations, and hosted services commercial.
+
+Definition of done: any new engineer can restore the platform from cold backups, swap a vendor, and ship a release without tribal knowledge.
+
+### 6. Sequencing and capacity notes
+
+- Phases H and I should run in parallel; H is mostly documentation and ops, I is product. Both finish before any new module is added.
+- Phase J depends on a clean Phase H privacy posture (cannot do AI on data you cannot legally process).
+- Phase K depends on Phase J's compliance score as the marketable signal that drives marketplace and mutual recognition.
+- Phase L runs continuously, not as a final phase; promote items to standing operational practice as soon as they ship once.
+
+### 7. Watchlist (do not start yet, but track)
+
+- Generative AI for ordinance drafting and amendment impact analysis.
+- Drone / fixed-camera ingest for InfraInspect and EcoWatch.
+- Blockchain-anchored audit log — only if a credible LGU partner asks; otherwise a costly distraction.
+- Wearables for inspectors (smart glasses) — not until field UX foundations in Phase I are unquestionably solid.
+
+
+---
+
+## Execution Log — Pass 23 (Phase H, May 2026)
+
+**Theme**: Trust and transparency hardening — treasurer reconciliation, public certificate verifier, finding dispute workflow.
+
+### Schema and migrations
+47. Added `FindingDisputeStatus` enum (PENDING, REVIEWING, UPHELD, OVERTURNED) and `FindingDispute` model to `prisma/schema.prisma`; added back-relations on `Finding` and `User`. Migration `add_finding_dispute` applied; Prisma Client regenerated.
+
+### API — services
+48. Extended `src/services/audit-logs.ts` action union with `finding.dispute_submitted` and `finding.dispute_resolved`.
+49. Created `src/services/finding-disputes.ts`: `createFindingDispute` (enforces business-owner authorship, rejects duplicates), `getDisputeByFinding` (404 if absent), `resolveDispute` (rejects terminal re-resolution with 409). All mutations emit audit log entries.
+50. Extended `src/services/reports.ts` with `getPaymentReconciliation`: aggregates PAID and PENDING/PROCESSING payments in a date range, groups by office, surfaces aging-unpaid (>7 days) bucket.
+
+### API — routes
+51. Created `src/routes/findings.ts`: POST `/:findingId/dispute` (business_owner), GET `/:findingId/dispute` (any authenticated), PATCH `/:findingId/dispute` (admin roles).
+52. Extended `src/routes/reports.ts` with GET `/payments/reconciliation` (admin roles, optional `fromDate/toDate/lguId/officeId` filters).
+53. Wired `findingsRouter` in `src/app.ts` at `/api/v1/findings`.
+
+### Shared types
+54. Added `FindingDisputeRecord`, `PaymentReconciliationByOffice`, `PaymentReconciliationReport`, `CertificateVerificationResult` to `shared/types/api.ts`; extended `AuditLogRecord.action` union.
+
+### Dashboard — API clients and hooks
+55. Created `src/lib/api/reports.ts`: `getPaymentReconciliation`.
+56. Created `src/lib/api/certificate-verify.ts`: `getPublicCertificateVerification` (public, unauthenticated), `createFireSafetyCertificate`.
+57. Created `src/lib/api/finding-disputes.ts`: `submitFindingDispute`, `getFindingDispute`, `resolveFindingDispute`.
+58. Created `src/hooks/use-payment-reconciliation.ts`: state + TanStack Query hook for reconciliation.
+59. Created `src/hooks/use-finding-dispute.ts`: query + submit/resolve mutations with cache invalidation.
+
+### Dashboard — components and pages
+60. Created `src/components/payment-reconciliation.tsx`: date-range filter, three KPI cards, office breakdown table, CSV export.
+61. Created `src/app/reports/payments/page.tsx`: wraps `PaymentReconciliation`.
+62. Created `src/components/certificate-verifier.tsx`: public certificate verification card (loading / valid / invalid / not-found states).
+63. Created `src/app/verify/[certificateNumber]/page.tsx`: dynamic server-component page wrapping the verifier.
+64. Created `src/components/finding-dispute-panel.tsx`: collapsible panel per finding — business owner submits dispute via Modal, admin resolves via Modal with status Select.
+65. Updated `src/components/inspection-workspace.tsx`: imported `FindingDisputePanel` and rendered it alongside each finding's severity tag.
+66. Updated `src/components/dashboard-app-shell.tsx`: added "Payment reconciliation" nav item (`/reports/payments`, admin-only, `ReconciliationOutlined` icon).
+
+### Tests
+67. Created `src/components/payment-reconciliation.test.tsx`: loading, error, and data-present states (7 tests, all passing).
+68. Created `src/components/certificate-verifier.test.tsx`: loading, valid, invalid, and not-found states (4 tests, all passing).
+69. Created `src/__tests__/finding-disputes.test.ts` (API): POST creates (201), duplicate returns 409, non-owner returns 403, GET returns dispute, GET returns 404, PATCH updates status, PATCH rejects terminal re-resolution (409), PATCH blocks business_owner (403) — 8 tests, all passing.
+
+### Quality gates
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors (pre-existing Sentry module-not-found warnings unchanged).
+- API Jest finding-disputes suite: 8/8 passing.
+- Dashboard Vitest new test files: 7/7 passing.
