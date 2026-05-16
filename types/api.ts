@@ -638,3 +638,40 @@ export type AuditLogAction =
   | AuditLogRecord["action"]
   | "finding.dispute_submitted"
   | "finding.dispute_resolved";
+
+// ---------------------------------------------------------------------------
+// Data subject requests (Phase H — NPC privacy compliance)
+// ---------------------------------------------------------------------------
+
+export type DataSubjectRequestType = "ACCESS" | "CORRECTION" | "ERASURE";
+
+export type DataSubjectRequestStatus =
+  | "PENDING"
+  | "IN_REVIEW"
+  | "COMPLETED"
+  | "REJECTED"
+  | "WITHDRAWN";
+
+export interface DataSubjectRequestRecord {
+  id: string;
+  type: DataSubjectRequestType;
+  status: DataSubjectRequestStatus;
+  requestedByUserId: string | null;
+  email: string;
+  description: string;
+  response: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateDataSubjectRequestInput {
+  type: DataSubjectRequestType;
+  email: string;
+  description: string;
+}
+
+export interface UpdateDataSubjectRequestInput {
+  status: DataSubjectRequestStatus;
+  response?: string;
+}

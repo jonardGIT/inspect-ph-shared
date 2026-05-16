@@ -1303,3 +1303,38 @@ Definition of done: any new engineer can restore the platform from cold backups,
 - Dashboard `npx tsc --noEmit`: zero errors (pre-existing Sentry module-not-found warnings unchanged).
 - API Jest finding-disputes suite: 8/8 passing.
 - Dashboard Vitest new test files: 7/7 passing.
+
+---
+
+## Pass 24 execution log — Phase I: Field UX excellence (non-AI items)
+
+### Dashboard — command palette
+
+70. Created `src/hooks/use-command-palette.ts`: manages open/close state; binds `Cmd+K` / `Ctrl+K` to toggle and `Escape` to close via `window.addEventListener`.
+71. Created `src/components/command-palette.tsx`: Ant Design `Modal`-based palette with fuzzy-score search (`scoreItem` gives 100 / 80 / 60 / 50 / 40 for exact / startsWith / includes / path / keywords). 25+ nav items across Navigation, Modules, and Admin categories. Admin-only items hidden for non-admin users. Keyboard navigation: ArrowUp/Down to move cursor, Enter to navigate, Escape to close. Input auto-focuses on open.
+72. Updated `src/components/dashboard-app-shell.tsx`: wired `useCommandPalette`, added `⌘K search` button to header, rendered `<CommandPalette>` at layout root.
+
+### Dashboard — persistent per-user filters
+
+73. Rewrote `src/hooks/use-browser-query-params.ts`: added `storageKey` / `loadSavedParams` / `saveParams` helpers using `window.localStorage`. On first mount (tracked by `restoredRef`), if URL has no filter keys, restores saved params via `router.replace`. On every `replaceParams` call, persists current filter state. `clearValues` removes from localStorage too.
+
+### Mobile — field mode toggle
+
+74. Created `hooks/use-field-mode.tsx`: `FieldModeContext` + `FieldModeProvider` that persists field mode to AsyncStorage (`inspect-ph:field-mode`). Provides `{ fieldMode, toggleFieldMode, colors, minTouchSize }` — when field mode is ON, `colors` is `FIELD_COLORS` (high-contrast dark palette: background `#000`, primary `#00e5c3`, large text) and `minTouchSize` is 56 dp; when OFF, uses standard `COLORS` from `constants/theme.ts` and 44 dp touch target.
+75. Created `components/field-mode-toggle.tsx`: `Pressable` button that calls `toggleFieldMode`. Uses `fieldMode` state to style itself (solid primary background when ON, muted border when OFF). Respects `minTouchSize` for accessible touch area.
+76. Updated `app/_layout.tsx`: wrapped component tree with `<FieldModeProvider>` inside `<AuthSessionProvider>`.
+77. Updated `app/index.tsx`: imported and rendered `<FieldModeToggle />` below `<SyncStatusBar />` on the home screen.
+
+### Mobile — auto-save reassurance
+
+78. Rewrote `components/sync-status-bar.tsx`: added `probeConnectivity()` which `HEAD`s `EXPO_PUBLIC_API_URL/health` with a 3-second timeout. Every 15 s, polls both `countAllPendingQueueItems()` and `probeConnectivity()` in parallel. Shows distinct messages: when offline + pending → "📵 Saved locally — N items waiting to sync (offline)"; when online + pending → "☁️ Saved locally — syncing N items…". Danger (red) border when offline, accent (amber) when online. Hidden when all synced.
+
+### Tests
+
+79. Created `src/components/command-palette.test.tsx`: 7 tests — renders input when open, shows nav items by default, filters by label text (admin), filters by keyword, hides Admin items for non-admin, shows Admin items for admin, shows "No results" for nonsense query. All 7 passing.
+80. Fixed `src/components/inspection-workspace.test.tsx`: added `vi.mock("@/hooks/use-finding-dispute")` to prevent `No QueryClient set` error from `FindingDisputePanel`.
+
+### Quality gates
+- Mobile `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors (pre-existing Sentry module-not-found warnings unchanged).
+- Dashboard Vitest full suite: 87/87 tests passing (39 files).
