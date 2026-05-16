@@ -50,6 +50,8 @@ export interface AuditLogRecord {
     | "auth.register"
     | "auth.session_revoked"
     | "business.archived"
+    | "cap.created"
+    | "cap.status_updated"
     | "certificate.issued"
     | "finding.created"
     | "finding.resolved"
@@ -62,6 +64,7 @@ export interface AuditLogRecord {
     | "office.archived"
     | "payment.status_updated"
     | "permit.archived"
+    | "permit.expiry_reminder"
     | "permit.status_updated"
     | "reinspection.requested";
   actor?: Pick<User, "email" | "id" | "name" | "role">;
@@ -71,6 +74,7 @@ export interface AuditLogRecord {
   entityType:
     | "attachment"
     | "business"
+    | "cap"
     | "certificate"
     | "checklist_result"
     | "finding"
@@ -91,7 +95,10 @@ export interface NotificationOutboxRecord {
   createdAt: string;
   entityId?: string;
   entityType?: "inspection";
-  eventType: "inspection.assigned" | "inspection.status_updated";
+  eventType:
+    | "inspection.assigned"
+    | "inspection.status_updated"
+    | "permit.expiry_reminder";
   id: string;
   recipient: Pick<User, "email" | "id" | "name" | "role">;
   status: "pending" | "processed" | "failed";
@@ -183,6 +190,7 @@ export interface FireSafetyCertificateRecord {
   expiresAt: string;
   status: "draft" | "issued" | "revoked" | "expired";
   remarks?: string;
+  verificationUrl?: string;
   createdAt: string;
   updatedAt: string;
   inspection: {
@@ -316,6 +324,7 @@ export interface PaymentRecord {
   paidAt?: string;
   failedAt?: string;
   failureReason?: string;
+  receiptNumber?: string;
   createdAt: string;
   updatedAt: string;
   permit: {
@@ -384,6 +393,7 @@ export interface ChecklistTemplateRecord {
   title: string;
   description?: string;
   sortOrder: number;
+  version: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -400,6 +410,8 @@ export interface InspectionChecklistResultRecord {
   };
   status: "pass" | "fail" | "not_applicable";
   remarks?: string;
+  templateVersion?: number;
+  templateSnapshot?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -496,4 +508,50 @@ export interface InspectionHistoryEvent {
     | "finding_logged"
     | "finding_resolved"
     | "attachment_uploaded";
+}
+
+export interface CorrectiveActionPlanRecord {
+  id: string;
+  findingId: string;
+  inspectionId: string;
+  businessId: string;
+  description: string;
+  deadlineAt?: string;
+  status: "open" | "acknowledged" | "resolved" | "escalated";
+  responseNote?: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  finding: {
+    id: string;
+    title: string;
+    severity: FindingRecord["severity"];
+  };
+  business: {
+    id: string;
+    businessName: string;
+  };
+  inspection: {
+    id: string;
+    status: InspectionRecord["status"];
+    scheduledAt: string;
+  };
+}
+
+export interface BulkCreateInspectionItemInput {
+  businessId: string;
+  officeId: string;
+  permitRecordId: string;
+  scheduledAt: string;
+  inspectorId?: string;
+  notes?: string;
+}
+
+export interface BulkCreateInspectionInput {
+  items: BulkCreateInspectionItemInput[];
+}
+
+export interface BulkAssignInspectionInput {
+  inspectionIds: string[];
+  inspectorId: string;
 }

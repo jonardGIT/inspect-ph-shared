@@ -445,7 +445,7 @@ The roadmap was executed in 11 short validation-and-repair passes rather than on
     - Waste disposal practices
     - Safe water supply
     - Pest control
-    Each template follows the existing Phase G checklist shape (name, identifier, module, items array with weight/required flags).
+      Each template follows the existing Phase G checklist shape (name, identifier, module, items array with weight/required flags).
 
 ## Execution Log — Pass 5 (Operations monitoring — system health)
 
@@ -536,7 +536,7 @@ The roadmap was executed in 11 short validation-and-repair passes rather than on
     - `src/components/ecowatch-browser.test.tsx` — 3 tests: locks to EcoWatch office, loading spinner, empty state.
     - `src/components/zoneverify-browser.test.tsx` — 3 tests: locks to ZoneVerify office, loading spinner, empty state.
     - `src/components/infrainspect-browser.test.tsx` — 3 tests: locks to InfraInspect Pro office, loading spinner, empty state.
-    All follow the sanitacheck/marketguard pattern: mock `useModuleWorkspace`, stub `InspectionBrowser` and the module's overview panel.
+      All follow the sanitacheck/marketguard pattern: mock `useModuleWorkspace`, stub `InspectionBrowser` and the module's overview panel.
 
 ## Execution Log — Pass 15 (Phase G module browser tests — batch 2 + checklist templates)
 
@@ -562,7 +562,7 @@ The roadmap was executed in 11 short validation-and-repair passes rather than on
 31. Added `ChecklistTemplate` upserts to the two module seed scripts that were missing them:
     - `src/scripts/seed-dev-buildsure.ts`: 5 templates (BUILD-001 through BUILD-005) covering building permit documentation, structural integrity, fire safety provisions, electrical and plumbing systems, and occupancy/sanitation facilities.
     - `src/scripts/seed-dev-marketguard.ts`: 5 templates (MARKET-001 through MARKET-005) covering stall permit documentation, food storage and handling safety, stall sanitation, waste management and drainage, and pest control.
-    Both scripts now follow the same pattern as `seed-dev-sanitacheck.ts` (Pass 4): a `CHECKLIST_ITEMS` array iterated with `prisma.checklistTemplate.upsert` keyed by `code`.
+      Both scripts now follow the same pattern as `seed-dev-sanitacheck.ts` (Pass 4): a `CHECKLIST_ITEMS` array iterated with `prisma.checklistTemplate.upsert` keyed by `code`.
 32. Updated `shared/ROADMAP.md`:
     - Phase G status changed from `(active)` to `(complete)`.
     - All 9 Phase G modules marked ✅.
@@ -922,3 +922,134 @@ Phase G Batch 3 — checklist template management:
 - Do not transition entity statuses in the request path for time-based conditions (overdue, expired). Use the sweep worker only.
 - Do not copy CIRS features blindly; adapt them to inspection workflows only.
 - Do not start multiple new modules before BPLO and one second module prove the generic-core design.
+
+---
+
+## Phase H — Inspection Lifecycle Completion (active)
+
+Closes the critical gaps identified in the May 2026 strategic analysis where real operational failures would occur in a live deployment.
+
+### H1: Checklist Template Versioning ✅
+
+- `version Int @default(1)` added to `ChecklistTemplate`; incremented on every title/description edit
+- `templateVersion Int?` and `templateSnapshot Json?` added to `InspectionChecklistResult`
+- `upsertInspectionChecklistResult` captures a denormalized template snapshot at creation time
+- Historical inspection results are immutable even when the template is later edited
+
+### H2: Renewal Reminder Automation ✅
+
+- Status sweep extended with `sweepPermitExpiryReminders()`: finds permits expiring in 30, 14, and 7 days
+- Queues `NotificationOutbox` entries (both IN_APP and PUSH channels) for all `business_owner` users linked to expiring permits
+- Deduplicates: only queues one reminder per permit per horizon per sweep run
+- `NotificationChannel` enum extended with `PUSH` value
+- `permit.expiry_reminder` added to `AuditLogRecord.action` in shared types
+
+### H3: Bulk Scheduling Operations ✅
+
+- `POST /api/v1/inspections/bulk` — create up to 50 inspections in a single request (admin/supervisor/clerk)
+- `PATCH /api/v1/inspections/bulk-assign` — assign an array of inspection IDs to one inspector (admin/supervisor)
+- Dashboard: bulk-select checkbox column in `InspectionBrowser`; "Bulk assign" action modal opens when ≥1 row is selected
+- Shared types: `BulkCreateInspectionInput`, `BulkAssignInspectionInput`
+
+### H4: Corrective Action Plan (CAP) Workflow ✅
+
+- New `CorrectiveActionPlan` Prisma model linked to `Finding` (1-to-1), `Inspection`, and `BusinessEstablishment`
+- Status lifecycle: `OPEN → ACKNOWLEDGED → RESOLVED / ESCALATED`
+- Permissions: `cap:create` / `cap:manage` for admin roles; `cap:read` for inspector; `cap:read:own` / `cap:acknowledge` for business_owner
+- API: `POST /api/v1/findings/:id/cap`, `GET /api/v1/caps`, `PATCH /api/v1/caps/:id/status`, `GET /api/v1/caps/mine`
+- Dashboard: `cap-browser.tsx` component with status filter and business/inspection links; mounted at `/caps`
+- Mobile: CAP list on business owner's public-services screen; acknowledgement action inline
+
+---
+
+## Phase I — Self-Service & Transparency (active)
+
+Delivers the high-impact citizen-facing and operational-efficiency features identified in the May 2026 analysis.
+
+### I1: QR-Verified Digital Certificates ✅
+
+- `verificationUrl String?` field added to `FireSafetyCertificate`; populated at issuance with `{API_BASE}/api/v1/fire-safety-certificates/public/{certificateNumber}/verify`
+- `GET /api/v1/fire-safety-certificates/public/:certificateNumber/verify` — public JSON endpoint confirming certificate validity (no auth required)
+- `GET /api/v1/fire-safety-certificates/:id/certificate-html` — authenticated endpoint returning a printable HTML certificate with embedded QR code (SVG data URL via the `qrcode` package)
+- Dashboard: "Print Certificate" button on FireGuard browser; opens certificate HTML in a new window for browser printing
+
+### I2: Business Self-Service Renewal Portal ✅
+
+- `POST /api/v1/permits/renewal-application` — business_owner submits a permit renewal request; creates a new `PermitRecord` in `PENDING_INSPECTION` status linked to their businessId
+- Dashboard: `/business-portal` page with permit renewal form (read-only for non-owner roles; owner self-serves)
+- Mobile: "Apply for Renewal" action added to business owner home screen; links to a modal form
+
+### I3: Inspector Calendar + Route View ✅
+
+- Dashboard: `inspection-calendar.tsx` component using `dateString` segmented control (week / month); fetches inspections with `?from=&to=` params; displays events color-coded by status on an HTML `<table>` calendar grid
+- `src/app/inspections/calendar/page.tsx` wraps the calendar component
+- `dashboard-app-shell.tsx` updated: added "Calendar" nav item under Inspections, `/inspections/calendar` protected prefix
+
+### I4: Official Receipt Generation ✅
+
+- `receiptNumber String? @unique` added to `PaymentRecord`; auto-generated as `OR-{YYYYMMDD}-{8-char UUID suffix}` when payment transitions to `PAID`
+- `GET /api/v1/payments/:id/receipt` — returns a printable HTML official receipt (admin/supervisor or payment owner); 404 if payment is not yet PAID
+- Dashboard: "Download Receipt" button on payment browser; visible when `status === "paid"` and user has `payment:read` permission
+
+---
+
+## Execution Log — Phase H+I Implementation (May 16 2026)
+
+### Schema and Migration
+
+- `version Int @default(1)` added to `ChecklistTemplate`
+- `templateVersion Int?` and `templateSnapshot Json?` added to `InspectionChecklistResult`
+- `verificationUrl String?` added to `FireSafetyCertificate`
+- `receiptNumber String? @unique` added to `PaymentRecord`
+- `CorrectiveActionPlan` model added (linked to `Finding`, `Inspection`, `BusinessEstablishment`)
+- `cap CorrectiveActionPlan?` relation added to `Finding`; `caps CorrectiveActionPlan[]` added to `Inspection` and `BusinessEstablishment`
+- `CapStatus` enum added: `OPEN`, `ACKNOWLEDGED`, `RESOLVED`, `ESCALATED`
+- `PUSH` added to `NotificationChannel` enum
+
+### API
+
+- `src/services/corrective-action-plans.ts` — `createCap`, `listCaps`, `updateCapStatus`, `listMineCaps`
+- `src/routes/corrective-action-plans.ts` — all 4 CAP endpoints; registered in `app.ts`
+- `src/services/inspections.ts` — `upsertInspectionChecklistResult` captures `templateVersion` + `templateSnapshot`; `bulkCreateInspections` + `bulkAssignInspections` added
+- `src/routes/inspections.ts` — `POST /bulk` and `PATCH /bulk-assign` endpoints added
+- `src/scripts/run-status-sweep.ts` — `sweepPermitExpiryReminders()` added; queues reminder notifications
+- `src/services/fire-safety-certificates.ts` — `issueCertificate` sets `verificationUrl`; `getCertificateHtml` generates printable HTML with QR SVG
+- `src/routes/fire-safety-certificates.ts` — `GET /public/:certificateNumber/verify` and `GET /:id/certificate-html` added
+- `src/services/payments.ts` — `receiptNumber` generated in `processPaymentWebhook` when status → PAID; `getPaymentReceipt` returns printable HTML
+- `src/routes/payments.ts` — `GET /:id/receipt` added
+- `src/types/auth.ts` — `ROLE_PROFILES` updated with CAP permissions for all roles
+- `qrcode` package installed in API (`npm install qrcode @types/qrcode`)
+- `POST /api/v1/permits/renewal-application` added to `src/routes/permits.ts` (business_owner only)
+
+### Shared Types
+
+- `CorrectiveActionPlanRecord` added
+- `ChecklistTemplateRecord.version` added
+- `InspectionChecklistResultRecord.templateVersion` and `templateSnapshot` added
+- `FireSafetyCertificateRecord.verificationUrl` added
+- `PaymentRecord.receiptNumber` added
+- `AuditLogRecord.action` extended with `permit.expiry_reminder` and `cap.created` / `cap.status_updated`
+- `BulkCreateInspectionInput` and `BulkAssignInspectionInput` added
+- `NotificationOutboxRecord.channel` already correct (`"in_app" | "push"`)
+
+### Dashboard
+
+- `src/lib/api/corrective-action-plans.ts` — API client for all CAP endpoints
+- `src/hooks/use-cap-browser.ts` — React Query hook
+- `src/components/cap-browser.tsx` — CAP browser with status filter and business/inspection links
+- `src/app/caps/page.tsx` — page wrapping `CapBrowser`
+- `src/lib/api/inspections.ts` — `bulkCreateInspections`, `bulkAssignInspections` added
+- `src/hooks/use-inspection-browser.ts` — `bulkAssignMutation` added
+- `src/components/inspection-browser.tsx` — bulk-select column and "Bulk assign" action
+- `src/components/inspection-calendar.tsx` — HTML table calendar with week/month toggle
+- `src/app/inspections/calendar/page.tsx` — calendar page
+- `src/components/payment-browser.tsx` — "Download Receipt" button for paid payments
+- `src/lib/api/payments.ts` — `downloadPaymentReceipt` function
+- `src/components/dashboard-app-shell.tsx` — added `/caps` and `/inspections/calendar` nav + protected prefixes
+- `src/lib/api/fire-safety-certificates.ts` — `printCertificateHtml` function
+- `src/components/fireguard-browser.tsx` / FSIC panel — "Print Certificate" button
+
+### Mobile
+
+- `app/index.tsx` — business owner home: "Apply for Renewal" action card added
+- `app/public-services.tsx` — CAP list section for business_owner; acknowledge action inline
