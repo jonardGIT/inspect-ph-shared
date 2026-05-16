@@ -1073,7 +1073,7 @@ Strengths to keep:
 Gaps and weaknesses the roadmap does not yet address:
 
 1. **No tenant onboarding story.** The roadmap assumes LGUs exist but never describes how a new LGU is provisioned, billed, branded, trained, or off-boarded. Without this, multi-LGU is a schema feature, not a product.
-2. **No data lifecycle and retention policy beyond backups.** RA 10173 (Data Privacy Act) requires defined retention, lawful basis, data subject rights (access, correction, erasure, portability), and a privacy notice surface. Backups are documented; the *operational* privacy workflow is not.
+2. **No data lifecycle and retention policy beyond backups.** RA 10173 (Data Privacy Act) requires defined retention, lawful basis, data subject rights (access, correction, erasure, portability), and a privacy notice surface. Backups are documented; the _operational_ privacy workflow is not.
 3. **No incident response or status page.** Sentry is wired, but there is no on-call rotation, severity matrix, public status page, customer comms template, or post-mortem cadence.
 4. **No SLO / SLA definitions.** Latency thresholds exist only in k6 scripts. There is no documented uptime target, error budget, or degraded-mode behavior contract with LGUs.
 5. **Search is structural, not semantic.** Inspections and businesses are filtered by enums and IDs. There is no full-text search across findings, no fuzzy business-name dedupe, and no cross-module global search bar.
@@ -1126,7 +1126,7 @@ Dashboard (supervisor and admin):
 - **Command palette (Ctrl/Cmd+K).** Jump to any business, inspection, permit, or page; admins live in this.
 - **Persistent filters per user.** Remember the last filter set per browser page; restore on return.
 - **Bulk actions with preview.** Multi-select inspections to reassign, reschedule, or export; show a dry-run diff before commit.
-- **Empty states that teach.** Every empty list explains *why* it is empty and the next concrete action ("No overdue inspections — try widening the date range or check the OVERDUE sweep ran in the last 15 minutes").
+- **Empty states that teach.** Every empty list explains _why_ it is empty and the next concrete action ("No overdue inspections — try widening the date range or check the OVERDUE sweep ran in the last 15 minutes").
 - **Inline help anchored to the data.** Tooltips reference the actual ordinance, the actual checklist version, the actual SLA.
 - **Density toggle.** Compact rows for power users; comfortable rows for occasional users.
 
@@ -1144,18 +1144,18 @@ Accessibility and localization:
 
 ### 4. Benchmark against existing systems
 
-| System                          | Domain                          | What they do well                                                                | What InspectPH still lacks compared to them                                                            |
-| ------------------------------- | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| SafetyCulture (iAuditor)        | Global inspection app           | Industry-best mobile checklist UX, template marketplace, AI photo analysis, BI   | Photo AI, template marketplace, prebuilt analytics, integrations marketplace                           |
-| Accela Civic Platform           | US municipal permitting         | Configurable workflows, citizen portal, agency-to-agency referrals               | Cross-agency referrals, formal workflow designer, GIS plan-review overlays                             |
-| Tyler Tech EnerGov              | US permitting and inspection    | Deep parcel + GIS integration, mature plan-review, fee schedules                 | Parcel/GIS layer, dynamic fee schedules, plan-review markup tools                                      |
-| OpenGov Permitting              | US municipal                    | Friendly applicant UX, low-code form builder, public records portal              | Low-code form builder, public records / FOI portal                                                     |
-| Granicus govDelivery / govMeetings | Citizen engagement           | Multi-channel notifications (email, SMS, push), public meeting transparency      | SMS channel, broadcast notifications, public meeting and ordinance archives                            |
-| GoCanvas / ProntoForms          | Generic field forms             | Drag-drop form builder, offline-first, simple pricing                            | Form builder for non-developers, native PDF generation per template                                    |
-| Esri ArcGIS Field Maps          | GIS-native field work           | Best-in-class offline maps, parcel attribute editing, route optimization         | Offline tiled maps, parcel editing, optimized routing                                                  |
-| iLand / PlanGrid (Autodesk)     | Construction inspection         | Plan-overlay markup, BIM links                                                   | Drawing/plan markup for BuildSure                                                                      |
-| LandlordStudio / RentRedi       | Property compliance lite        | Self-service compliance, document vault, reminders                               | Document vault per business, automated renewal reminders with calendar invites                         |
-| Bisaya/Tagalog civic apps (eGovPH, Ph BIR, PhilSys) | National PH stack | Trust anchor through OGCIO identity, payment, and registry APIs                | Integration with PhilSys, BIR, DTI/SEC, LRA, DICT eGovPH SSO                                           |
+| System                                              | Domain                       | What they do well                                                              | What InspectPH still lacks compared to them                                    |
+| --------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| SafetyCulture (iAuditor)                            | Global inspection app        | Industry-best mobile checklist UX, template marketplace, AI photo analysis, BI | Photo AI, template marketplace, prebuilt analytics, integrations marketplace   |
+| Accela Civic Platform                               | US municipal permitting      | Configurable workflows, citizen portal, agency-to-agency referrals             | Cross-agency referrals, formal workflow designer, GIS plan-review overlays     |
+| Tyler Tech EnerGov                                  | US permitting and inspection | Deep parcel + GIS integration, mature plan-review, fee schedules               | Parcel/GIS layer, dynamic fee schedules, plan-review markup tools              |
+| OpenGov Permitting                                  | US municipal                 | Friendly applicant UX, low-code form builder, public records portal            | Low-code form builder, public records / FOI portal                             |
+| Granicus govDelivery / govMeetings                  | Citizen engagement           | Multi-channel notifications (email, SMS, push), public meeting transparency    | SMS channel, broadcast notifications, public meeting and ordinance archives    |
+| GoCanvas / ProntoForms                              | Generic field forms          | Drag-drop form builder, offline-first, simple pricing                          | Form builder for non-developers, native PDF generation per template            |
+| Esri ArcGIS Field Maps                              | GIS-native field work        | Best-in-class offline maps, parcel attribute editing, route optimization       | Offline tiled maps, parcel editing, optimized routing                          |
+| iLand / PlanGrid (Autodesk)                         | Construction inspection      | Plan-overlay markup, BIM links                                                 | Drawing/plan markup for BuildSure                                              |
+| LandlordStudio / RentRedi                           | Property compliance lite     | Self-service compliance, document vault, reminders                             | Document vault per business, automated renewal reminders with calendar invites |
+| Bisaya/Tagalog civic apps (eGovPH, Ph BIR, PhilSys) | National PH stack            | Trust anchor through OGCIO identity, payment, and registry APIs                | Integration with PhilSys, BIR, DTI/SEC, LRA, DICT eGovPH SSO                   |
 
 Key takeaways:
 
@@ -1184,7 +1184,7 @@ Definition of done: an LGU can pass an NPC compliance review and a COA audit usi
 
 #### Phase I — Field UX excellence
 
-Goal: close the iAuditor-grade UX gap on mobile and make the dashboard a tool supervisors *want* to use.
+Goal: close the iAuditor-grade UX gap on mobile and make the dashboard a tool supervisors _want_ to use.
 
 1. **Photo-first finding flow** with offline-safe camera, EXIF stripping for PII, and retake hints.
 2. **AI photo triage** (on-device first pass; server-side cross-check for evidence). Use a quantized open model so it runs on mid-range Android devices.
@@ -1254,7 +1254,6 @@ Definition of done: any new engineer can restore the platform from cold backups,
 - Blockchain-anchored audit log — only if a credible LGU partner asks; otherwise a costly distraction.
 - Wearables for inspectors (smart glasses) — not until field UX foundations in Phase I are unquestionably solid.
 
-
 ---
 
 ## Execution Log — Pass 23 (Phase H, May 2026)
@@ -1262,22 +1261,27 @@ Definition of done: any new engineer can restore the platform from cold backups,
 **Theme**: Trust and transparency hardening — treasurer reconciliation, public certificate verifier, finding dispute workflow.
 
 ### Schema and migrations
+
 47. Added `FindingDisputeStatus` enum (PENDING, REVIEWING, UPHELD, OVERTURNED) and `FindingDispute` model to `prisma/schema.prisma`; added back-relations on `Finding` and `User`. Migration `add_finding_dispute` applied; Prisma Client regenerated.
 
 ### API — services
+
 48. Extended `src/services/audit-logs.ts` action union with `finding.dispute_submitted` and `finding.dispute_resolved`.
 49. Created `src/services/finding-disputes.ts`: `createFindingDispute` (enforces business-owner authorship, rejects duplicates), `getDisputeByFinding` (404 if absent), `resolveDispute` (rejects terminal re-resolution with 409). All mutations emit audit log entries.
 50. Extended `src/services/reports.ts` with `getPaymentReconciliation`: aggregates PAID and PENDING/PROCESSING payments in a date range, groups by office, surfaces aging-unpaid (>7 days) bucket.
 
 ### API — routes
+
 51. Created `src/routes/findings.ts`: POST `/:findingId/dispute` (business_owner), GET `/:findingId/dispute` (any authenticated), PATCH `/:findingId/dispute` (admin roles).
 52. Extended `src/routes/reports.ts` with GET `/payments/reconciliation` (admin roles, optional `fromDate/toDate/lguId/officeId` filters).
 53. Wired `findingsRouter` in `src/app.ts` at `/api/v1/findings`.
 
 ### Shared types
+
 54. Added `FindingDisputeRecord`, `PaymentReconciliationByOffice`, `PaymentReconciliationReport`, `CertificateVerificationResult` to `shared/types/api.ts`; extended `AuditLogRecord.action` union.
 
 ### Dashboard — API clients and hooks
+
 55. Created `src/lib/api/reports.ts`: `getPaymentReconciliation`.
 56. Created `src/lib/api/certificate-verify.ts`: `getPublicCertificateVerification` (public, unauthenticated), `createFireSafetyCertificate`.
 57. Created `src/lib/api/finding-disputes.ts`: `submitFindingDispute`, `getFindingDispute`, `resolveFindingDispute`.
@@ -1285,6 +1289,7 @@ Definition of done: any new engineer can restore the platform from cold backups,
 59. Created `src/hooks/use-finding-dispute.ts`: query + submit/resolve mutations with cache invalidation.
 
 ### Dashboard — components and pages
+
 60. Created `src/components/payment-reconciliation.tsx`: date-range filter, three KPI cards, office breakdown table, CSV export.
 61. Created `src/app/reports/payments/page.tsx`: wraps `PaymentReconciliation`.
 62. Created `src/components/certificate-verifier.tsx`: public certificate verification card (loading / valid / invalid / not-found states).
@@ -1294,11 +1299,13 @@ Definition of done: any new engineer can restore the platform from cold backups,
 66. Updated `src/components/dashboard-app-shell.tsx`: added "Payment reconciliation" nav item (`/reports/payments`, admin-only, `ReconciliationOutlined` icon).
 
 ### Tests
+
 67. Created `src/components/payment-reconciliation.test.tsx`: loading, error, and data-present states (7 tests, all passing).
 68. Created `src/components/certificate-verifier.test.tsx`: loading, valid, invalid, and not-found states (4 tests, all passing).
 69. Created `src/__tests__/finding-disputes.test.ts` (API): POST creates (201), duplicate returns 409, non-owner returns 403, GET returns dispute, GET returns 404, PATCH updates status, PATCH rejects terminal re-resolution (409), PATCH blocks business_owner (403) — 8 tests, all passing.
 
 ### Quality gates
+
 - API `npx tsc --noEmit`: zero errors.
 - Dashboard `npx tsc --noEmit`: zero errors (pre-existing Sentry module-not-found warnings unchanged).
 - API Jest finding-disputes suite: 8/8 passing.
@@ -1335,6 +1342,130 @@ Definition of done: any new engineer can restore the platform from cold backups,
 80. Fixed `src/components/inspection-workspace.test.tsx`: added `vi.mock("@/hooks/use-finding-dispute")` to prevent `No QueryClient set` error from `FindingDisputePanel`.
 
 ### Quality gates
+
 - Mobile `npx tsc --noEmit`: zero errors.
 - Dashboard `npx tsc --noEmit`: zero errors (pre-existing Sentry module-not-found warnings unchanged).
 - Dashboard Vitest full suite: 87/87 tests passing (39 files).
+
+---
+
+## Pass 25 — Phase H: Data Privacy Operations + Phase I: WCAG / Tagalog Locale
+
+### API — data subject requests (NPC / RA 10173 compliance)
+
+81. Added `DataSubjectRequest` model to `prisma/schema.prisma` with fields `id`, `type`, `status`, `requestedByUserId`, `email`, `description`, `response`, `completedAt`, `createdAt`, `updatedAt`. Added `DataSubjectRequestType` enum (`ACCESS | CORRECTION | ERASURE`) and `DataSubjectRequestStatus` enum (`PENDING | IN_REVIEW | COMPLETED | REJECTED | WITHDRAWN`). Added `dataSubjectRequests` relation to `User`.
+82. Created `prisma/migrations/20260522_add_data_subject_request/migration.sql`: creates the table, enums, indexes, and foreign key.
+83. Created `src/services/data-subject-requests.ts`: `createDataSubjectRequest`, `listDataSubjectRequests` (paginated, status/type filters), `getDataSubjectRequest`, `updateDataSubjectRequest` (blocks updates on terminal statuses, sets `completedAt` on completion/rejection).
+84. Created `src/routes/privacy.ts`: `POST /` (public, rate-limited 10/hr), `GET /` (admin, paginated list), `GET /:id` (admin), `PATCH /:id` (admin). Mounted at `/api/v1/privacy/requests` in `app.ts`.
+
+### API — data retention script extended
+
+85. Extended `src/scripts/run-data-retention.ts` with Phase H policies: attachment metadata (5-year delete), inspection records (10-year delete, COMPLETED/CANCELED only), IssueReport PII anonymization (2-year, replaces description + locationDescription with `[anonymized]`). Updated `cli-data-retention.ts` to report all new fields.
+
+### Shared types
+
+86. Appended to `shared/types/api.ts`: `DataSubjectRequestType`, `DataSubjectRequestStatus`, `DataSubjectRequestRecord`, `CreateDataSubjectRequestInput`, `UpdateDataSubjectRequestInput`.
+
+### Dashboard — privacy pages and admin inbox
+
+87. Created `src/lib/api/privacy.ts`: `submitDataSubjectRequest` (public), `listDataSubjectRequests`, `getDataSubjectRequest`, `updateDataSubjectRequest`.
+88. Created `src/hooks/use-data-subject-requests.ts`: `useDataSubjectRequests(filters)`, `useDataSubjectRequest(id)`, `useUpdateDataSubjectRequest()` TanStack Query hooks.
+89. Created `src/app/privacy/page.tsx`: static NPC-compliant privacy notice with retention periods, RA 10173 rights, DPO contact.
+90. Created `src/components/privacy-request-form.tsx`: citizen-facing form (type SELECT with descriptions, email, description textarea). Shows success Result on submit.
+91. Created `src/app/privacy/submit/page.tsx`: public wrapper page for `<PrivacyRequestForm />`.
+92. Created `src/components/privacy-requests-table.tsx`: admin inbox — Table with type/status/email/description columns, type + status filter Selects, Review Drawer with request details + status update form. Disabled Review for terminal statuses.
+93. Created `src/app/privacy/requests/page.tsx`: admin page wrapping `<PrivacyRequestsTable />`.
+94. Updated `src/components/dashboard-app-shell.tsx`: added `LockOutlined` import, "Privacy requests" nav item (admin-only), `/privacy` in `PROTECTED_PREFIXES`, `/privacy/requests` in `ADMIN_ONLY_PATHS`.
+
+### Phase I — WCAG 2.1 AA test infrastructure
+
+95. Installed `vitest-axe` (dev dep). Created `src/test/axe-helper.ts`: exports `configureAxe`-based `axe` function with color-contrast disabled (unreliable in jsdom).
+96. Created `src/components/privacy-request-form.test.tsx`: 4 tests including `"has no WCAG 2.1 AA violations on initial render"` using `axe(container)` + `expect(results.violations).toHaveLength(0)`.
+
+### Phase I — Tagalog locale foundation
+
+97. Created `src/lib/i18n/en.ts`: `Locale` interface + `en` object covering `nav`, `auth`, `common`, `inspections`, `privacy` namespaces (English strings).
+98. Created `src/lib/i18n/tl.ts`: `tl` object implementing `Locale` with Filipino translations for all keys.
+99. Created `src/hooks/use-locale.ts`: `useLocale()` hook — detects browser language (`navigator.language`), persists choice to `localStorage` (`inspect-ph:locale`), returns `{ locale, setLocale, t }`.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files, +4 new privacy tests).
+
+---
+
+## Pass 26 — Phase H: Treasurer Report + Phase I: Photo-First Finding Flow + STRIDE Threat Model
+
+### Treasurer fee collection report (Phase H strategic item 7)
+
+100. API: Added `getTreasurerReport(input)` service function to `src/services/reports.ts`. Aggregates PAID payments by office and day, builds daily trend array, lists aging receivables (unpaid >7 days) with business name, permit number, and days overdue. Response shape: `TreasurerReport`.
+101. API: Added `GET /api/v1/reports/treasurer` route (admin/lgu_admin only) to `src/routes/reports.ts`. Accepts `fromDate`, `toDate`, `officeId`, `lguId` query params. Also removed the duplicate `GET /reports/inspections/export` block that had accumulated at the end of the file.
+102. Shared: Appended `TreasurerAgingReceivable`, `TreasurerDailyEntry`, `TreasurerByOffice`, and `TreasurerReport` to `shared/types/api.ts`.
+103. Dashboard: Added `getTreasurerReport` to `src/lib/api/reports.ts` and `useTreasurerReport` hook in `src/hooks/use-treasurer-report.ts`.
+104. Dashboard: Created `src/components/treasurer-report.tsx` — date-range picker, four summary stat cards (collected, pending, aging, collection rate %), daily-trend table, by-office table, aging-receivables table with overdue-days tag sorted descending.
+105. Dashboard: Created `src/app/reports/treasurer/page.tsx` — server component wrapping `<TreasurerReport />`.
+106. Dashboard: Added "Treasurer report" nav item (`/reports/treasurer`, `AuditOutlined` icon, admin-only) to `dashboard-app-shell.tsx` navigation list.
+
+### Photo-first finding flow (Phase I strategic item 1)
+
+107. Mobile: Added `findingPhotoAsset` and `isCapturingFindingPhoto` state variables to `app/inspections/[inspectionId].tsx`. `resetFindingDraft()` now also clears the captured photo.
+108. Mobile: Added `handleCaptureFindingPhoto()` — calls `pickAttachment("camera")` and stores the result in `findingPhotoAsset`. Errors are surfaced in `findingError`.
+109. Mobile: The "Findings" `SurfaceCard` now opens with a prominent "Capture evidence photo (optional)" button as the first action. Label changes to "Evidence photo captured — retake" when a photo is held.
+110. Mobile: After a finding is created successfully, if `findingPhotoAsset` is set the photo is uploaded as an `InspectionAttachment` (with offline enqueue fallback), then `resetFindingDraft` clears it.
+
+### STRIDE threat model (Phase H strategic item 5)
+
+111. API: Created `docs/threat-model.md` — STRIDE analysis across auth, inspections, payment webhooks, attachment upload, public endpoints, admin operations, and data subject requests. Includes attacker personas table, abuse cases list, and residual risks with owners. Seven TODOs flagged: webhook replay dedup, server-side EXIF stripping, account lockout, JWT refresh rotation, TLS pinning on mobile, CSP on dashboard, and Sentry PII review.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 27 — Account Lockout + Webhook Dedup + LGU Provisioning + SLO/SLA Docs
+
+### Account lockout (threat model TODO R-03)
+
+112. API: Added `failedLoginAttempts Int @default(0)` and `lockedUntil DateTime?` fields to the `User` model in `prisma/schema.prisma`.
+113. API: Created migration `prisma/migrations/20260523_account_lockout_and_webhook_dedup/migration.sql` — `ALTER TABLE "User" ADD COLUMN "failedLoginAttempts"` and `ADD COLUMN "lockedUntil"`.
+114. API: Updated `login()` in `src/services/auth.ts` to: (1) check and enforce `lockedUntil` (HTTP 429 `ACCOUNT_LOCKED`), (2) increment `failedLoginAttempts` on wrong password and set 15-minute lockout at 10 consecutive failures, (3) reset both counters on successful login.
+
+### Webhook replay dedup (threat model TODO R-01)
+
+115. API: Added new `ProcessedWebhookEvent` Prisma model (eventId unique, processedAt indexed) to schema and migration SQL.
+116. API: Added `eventId?: string` to `PaymentWebhookEvent` interface in `src/lib/payment-provider.ts`. PayMongo `parseWebhookEvent` now extracts `data.id` as the event ID and includes it in the return value.
+117. API: Updated `processPaymentWebhook()` in `src/services/payments.ts` — before processing: check `processedWebhookEvent.findUnique({ where: { eventId } })` and return existing payment if already processed; after successful update: `processedWebhookEvent.create({ data: { eventId } })` to mark as processed.
+118. API: Ran `npx prisma generate` to regenerate the Prisma client with the new fields.
+
+### LGU provisioning / tenant lifecycle wizard (Phase H strategic item 2)
+
+119. API: Created `src/services/lgu-provisioning.ts` — `provisionLgu(input, actorId)` runs a `prisma.$transaction` that creates the Lgu, initial Office(s) with OfficeModule assignments, and an LGU_ADMIN User with office assignments. Emits `lgu.provisioned` audit log entry.
+120. API: Added `"lgu.provisioned"` to the action union in `src/services/audit-logs.ts`.
+121. API: Created `src/routes/lgu-provisioning.ts` — `POST /admin/provision-lgu` (ADMIN role only) with full express-validator validation for all fields.
+122. API: Mounted the admin router at `${API_V1}/admin` in `src/app.ts`.
+123. Shared: Appended `ProvisionOfficeInput`, `ProvisionLguInput`, and `ProvisionedLgu` interfaces to `shared/types/api.ts`.
+124. Dashboard: Created `src/lib/api/lgu-provisioning.ts` — `provisionLgu()` Axios POST client.
+125. Dashboard: Created `src/components/lgu-onboarding-wizard.tsx` — 5-step Ant Design wizard (LGU details → Office → Modules checkbox → Admin account → Review) with TanStack Query `useMutation` submission and success `Result` panel.
+126. Dashboard: Created `src/app/onboarding/page.tsx` wrapping `<LguOnboardingWizard />`.
+127. Dashboard: Added `RocketOutlined` import and "Provision LGU" nav item (`/onboarding`, admin-only) to `dashboard-app-shell.tsx`. Added `/onboarding` to both `PROTECTED_PREFIXES` and `ADMIN_ONLY_PATHS`.
+
+### SLO/SLA contract (Phase H strategic item 3)
+
+128. API: Created `docs/slo-sla.md` — API SLO 99.5 % / SLA 99.0 %, Dashboard SLO 99.0 % / SLA 98.5 %, p95 latency targets (<500 ms read, <1 000 ms write), RPO 1 h / RTO 4 h, error budget formula, planned maintenance window rules, degraded-mode contract, SLA breach remediation credits table.
+
+### Incident response runbook (Phase H strategic item 4)
+
+129. API: Created `docs/incident-response.md` — P1–P4 severity matrix with response SLAs, on-call rotation template, 6-step response workflow (detect → triage → investigate → mitigate → resolve → PIR), diagnostic commands, mitigation quick-reference table, full postmortem template, customer comms templates, escalation path, and key system links section.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.

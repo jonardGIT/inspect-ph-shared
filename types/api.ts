@@ -675,3 +675,71 @@ export interface UpdateDataSubjectRequestInput {
   status: DataSubjectRequestStatus;
   response?: string;
 }
+
+export interface TreasurerAgingReceivable {
+  paymentId: string;
+  referenceNumber: string;
+  businessName: string;
+  permitNumber: string;
+  amountInMinor: number;
+  createdAt: string;
+  daysOverdue: number;
+}
+
+export interface TreasurerDailyEntry {
+  date: string; // YYYY-MM-DD
+  collectedAmountInMinor: number;
+  paymentCount: number;
+}
+
+export interface TreasurerByOffice {
+  officeId: string;
+  officeName: string;
+  officeCode: string;
+  lguId: string;
+  collectedAmountInMinor: number;
+  collectedCount: number;
+  pendingAmountInMinor: number;
+  pendingCount: number;
+}
+
+export interface TreasurerReport {
+  fromDate: string;
+  toDate: string;
+  totalCollectedAmountInMinor: number;
+  totalCollectedCount: number;
+  totalPendingAmountInMinor: number;
+  totalPendingCount: number;
+  agingReceivablesCount: number;
+  agingReceivablesAmountInMinor: number;
+  dailyTrend: TreasurerDailyEntry[];
+  byOffice: TreasurerByOffice[];
+  agingReceivablesList: TreasurerAgingReceivable[];
+}
+
+// ── LGU Provisioning ────────────────────────────────────────────────────────
+
+export interface ProvisionOfficeInput {
+  name: string;
+  code: string;
+  moduleIds: string[];
+}
+
+export interface ProvisionLguInput {
+  lguName: string;
+  lguCode: string;
+  region?: string;
+  offices: ProvisionOfficeInput[];
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
+}
+
+export interface ProvisionedLgu {
+  lguId: string;
+  lguName: string;
+  lguCode: string;
+  officeIds: string[];
+  adminUserId: string;
+  adminEmail: string;
+}
