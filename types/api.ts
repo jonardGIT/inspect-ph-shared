@@ -28,11 +28,14 @@ export interface User {
     | "inspector"
     | "lgu_admin"
     | "office_supervisor"
-    | "office_clerk";
+    | "office_clerk"
+    | "business_owner"
+    | "citizen";
   lguId?: string;
   officeIds: string[];
+  businessId?: string;
   roleProfile: {
-    accessScope: "assigned" | "global" | "lgu" | "office";
+    accessScope: "assigned" | "global" | "lgu" | "office" | "own";
     label: string;
     permissions: string[];
   };
@@ -44,13 +47,16 @@ export interface AuditLogRecord {
     | "attachment.uploaded"
     | "auth.bootstrap_admin"
     | "auth.login"
+    | "auth.register"
     | "auth.session_revoked"
     | "finding.created"
     | "finding.resolved"
     | "inspection.assigned"
     | "inspection.checklist_result_recorded"
     | "inspection.created"
-    | "inspection.status_updated";
+    | "inspection.status_updated"
+    | "payment.status_updated"
+    | "reinspection.requested";
   actor?: Pick<User, "email" | "id" | "name" | "role">;
   createdAt: string;
   detail?: string;
@@ -259,6 +265,10 @@ export interface PublicPermitLookupRecord {
   business: {
     id: string;
     businessName: string;
+    ownerName: string | null;
+    contactNumber: string | null;
+    addressLine: string | null;
+    city: string | null;
   };
   applicationDate: string;
   expirationDate: string;
