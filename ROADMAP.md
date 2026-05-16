@@ -1469,3 +1469,264 @@ Definition of done: any new engineer can restore the platform from cold backups,
 - Dashboard `npx tsc --noEmit`: zero errors.
 - Dashboard Vitest full suite: 98/98 tests passing (41 files).
 - Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 28 — STRIDE Residual Risks Addressed (R-02, R-04, R-05, R-06, R-07)
+
+### R-02: Server-side EXIF stripping
+
+130. API: Installed `sharp` as a production dependency.
+131. API: Updated `uploadLocalAttachmentBinary()` in `src/services/uploads.ts` — JPEG, PNG, and WebP uploads are piped through `sharp(...).withMetadata({ orientation: undefined }).toBuffer()` before being written to disk, stripping GPS coordinates and all other EXIF metadata. Non-image files pass through unchanged. `fileSizeBytes` now reflects the post-strip size.
+
+### R-04: JWT refresh token reuse detection
+
+132. API: Updated `assertRefreshSessionActive()` in `src/services/auth-sessions.ts` — if the presented refresh token hash does not match the stored hash but the session is otherwise active (not expired, not revoked), the session is **immediately revoked** and a 401 is returned. This detects token theft / reuse: an attacker using a rotated-away token triggers forced session termination.
+
+### R-06: Dashboard Content Security Policy
+
+133. Dashboard: Added `headers()` function in `next.config.ts` applying to all routes. Headers: `Content-Security-Policy` (default-src self; script-src self + Sentry CDN; style-src self + unsafe-inline for Ant Design; font-src self + data:; img-src self + data: + blob:; connect-src self + Sentry ingest; frame-ancestors none; upgrade-insecure-requests), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` restricting camera/microphone/geolocation.
+
+### R-07: Sentry PII scrubbing
+
+134. Dashboard: Added `scrubPii()` and `beforeSend` hook to `sentry.client.config.ts` — strips password, tokens, auth headers, email, name, phone from request data and extra context; reduces user context to id + username only.
+135. Dashboard: Added equivalent `beforeSend` to `sentry.server.config.ts` covering request data, headers, extra, and user context.
+136. Dashboard: Added header-scrubbing `beforeSend` to `sentry.edge.config.ts`.
+
+### R-05: Mobile TLS pinning (scaffolded)
+
+137. Mobile: Created `lib/tls-pinning.ts` — documents `react-native-ssl-public-key-pinning` integration steps, SPKI SHA-256 extraction command, `initializeSslPinning` call site in `lib/api.ts`, and certificate rotation procedure. Full activation requires production cert hash + EAS native build.
+138. API: Updated `docs/threat-model.md` residual risks table with resolution status for all seven TODOs (R-01 through R-07).
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 29 — Phase J #1 (Compliance Score) + Phase J #5 (KPI Dashboard)
+
+### Phase J #1: Compliance Score per business
+
+139. API: Created `src/services/compliance-score.ts` — `computeComplianceScore(businessId)` aggregates 4 weighted dimensions (40% findings resolution, 30% inspection attendance, 20% checklist compliance, 10% payment on-time) over a rolling 12-month window, returning score 0–100, letter grade A–F, per-dimension breakdown, and period metadata.
+140. API: Added `GET /businesses/:id/compliance-score` to `src/routes/businesses.ts` — all authenticated roles, UUID param validation.
+141. Shared: Added `ComplianceScoreBreakdown` and `ComplianceScoreResult` interfaces to `shared/types/api.ts`.
+142. Dashboard: Added `getComplianceScore()` to `src/lib/api/businesses.ts`.
+143. Dashboard: Created `src/hooks/use-compliance-score.ts` — 5-min stale time for expensive aggregation.
+144. Dashboard: Created `src/components/compliance-score-card.tsx` — Progress circle with grade letter, four-row breakdown with pass/warning/fail coloring, last-computed timestamp.
+
+### Phase J #5: KPI Dashboard for mayors / LGU admins
+
+145. API: Created `src/services/kpi-report.ts` — `getKpiReport(input)` aggregates inspection counts (total/completed/in-progress/overdue/passRate), findings (total/resolved/resolvedRate/criticalOpen), payments (collected/pending amounts), by-office breakdown, and 12-month monthly trend buckets. Respects `lguId`, `officeId`, and `JurisdictionScope` filters.
+146. API: Added `GET /reports/kpi` to `src/routes/reports.ts` — ADMIN_ROLES only, ISO8601 + UUID query param validation.
+147. Shared: Added `KpiTrendEntry`, `KpiOfficeEntry`, and `KpiReport` interfaces to `shared/types/api.ts`.
+148. Dashboard: Added `getKpiReport()` to `src/lib/api/reports.ts`.
+149. Dashboard: Created `src/hooks/use-kpi-report.ts` with date range and lgu/office filters.
+150. Dashboard: Created `src/components/kpi-dashboard.tsx` — four inspection stat cards, four findings/payment stat cards, monthly trend table, by-office breakdown table, date range picker.
+151. Dashboard: Created `src/app/reports/kpi/page.tsx`.
+152. Dashboard: Added "KPI dashboard" nav item (`/reports/kpi`, `LineChartOutlined`) to `dashboard-app-shell.tsx` under admin-only items alongside Treasurer report.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 30 — Phase J #6 (Inspector Wellness) + Phase J #7 (Payment Anomaly Detection)
+
+### Phase J #6: Inspector wellness signals (aggregated only)
+
+153. API: Created `src/services/inspector-wellness.ts` — `getInspectorWellnessReport(input)` aggregates: active inspector count, avg inspections per inspector, avg and median inspection duration (capped at 480 min to exclude outliers), after-hours rate % (inspections started outside Mon–Fri 08:00–17:00), and avg pending queue per inspector. No individual-level data returned.
+154. API: Added `GET /reports/wellness` to `src/routes/reports.ts` (ADMIN_ROLES, ISO8601 + UUID query params).
+155. Shared: Added `InspectorWellnessReport` interface to `shared/types/api.ts`.
+156. Dashboard: Added `getWellnessReport()` to `src/lib/api/reports.ts`.
+157. Dashboard: Created `src/hooks/use-wellness-report.ts`.
+158. Dashboard: Created `src/components/wellness-report.tsx` — six stat cards with warning thresholds (after-hours > 20%, queue > 5), date range picker, privacy notice.
+159. Dashboard: Created `src/app/reports/wellness/page.tsx`.
+160. Dashboard: Added "Inspector wellness" nav item (`/reports/wellness`, `HeartOutlined`) to `dashboard-app-shell.tsx`.
+
+### Phase J #7: Payment webhook anomaly detection (rule-based)
+
+161. API: Added `PaymentAnomalyFlag` model to `prisma/schema.prisma` (fields: id, paymentId, reason, detail, quarantinedAt, resolvedAt, resolvedById). Added `anomalyFlags` relation to `PaymentRecord`, `resolvedAnomalyFlags` back-relation to `User`.
+162. API: Created manual migration `prisma/migrations/20260524_payment_anomaly_flag/migration.sql` — creates table, foreign keys, and indexes. Ran `npx prisma generate`.
+163. API: Created `src/services/payment-anomaly.ts` — detects four anomaly types: DUPLICATE (permit already has a PAID payment), AMOUNT_MISMATCH (>20% deviation from sibling payment), LOW_AMOUNT (<1000 minor units / <10 PHP), HIGH_VELOCITY (≥3 payments for same permit within 5 minutes). If anomalies detected: quarantines payment (FAILED + failureReason), creates `PaymentAnomalyFlag` records, writes audit log.
+164. API: Added `detectAndFlagAnomalies(paymentId)` call in `src/services/payments.ts` inside `processPaymentWebhook()` after successful status update for `paid` events.
+165. API: Added `"payment.anomaly_detected"` and `"payment.anomaly_resolved"` to audit log action union; added `"payment_anomaly_flag"` to entity type union in `src/services/audit-logs.ts`.
+166. API: Added `GET /reports/payment-anomalies` (list, paginated) and `PATCH /reports/payment-anomalies/:id/resolve` to `src/routes/reports.ts` (ADMIN_ROLES only).
+167. Shared: Added `PaymentAnomalyReason` type and `PaymentAnomalyFlag` interface to `shared/types/api.ts`.
+168. Dashboard: Added `listPaymentAnomalyFlags()` and `resolvePaymentAnomalyFlag()` to `src/lib/api/reports.ts`.
+169. Dashboard: Created `src/hooks/use-payment-anomaly-flags.ts` (list query + resolve mutation with cache invalidation).
+170. Dashboard: Created `src/components/payment-anomaly-browser.tsx` — table with reason tag coloring, detail tooltip, PHP amount, resolve-with-confirm action.
+171. Dashboard: Created `src/app/reports/payment-anomalies/page.tsx`.
+172. Dashboard: Added "Payment anomalies" nav item (`/reports/payment-anomalies`, `AlertOutlined`) to `dashboard-app-shell.tsx`.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 31 — Phase K #3 (Public open-data endpoints) + Phase K #4 (Outbound LGU webhooks)
+
+### Phase K #3: Public open-data endpoints
+
+173. API: Created `src/services/open-data.ts` — three aggregate functions: `getOpenDataCompliance` (avg compliance proxy score + grade distribution per LGU, rolling 12 months), `getOpenDataInspections` (total/completed/failed/passRate per LGU for a date range), `getOpenDataFees` (total PAID payment amount and count per LGU for a date range). All responses include an `attribution` field.
+174. API: Created `src/routes/open-data.ts` — three unauthenticated GET routes: `/open-data/compliance`, `/open-data/inspections`, `/open-data/fees`. Rate-limited at 20 req/min per IP (stricter than the default 60). Responses carry `X-Attribution-Required: true` and `Cache-Control: public, max-age=3600` headers.
+175. API: Registered `openDataRouter` in `app.ts` under `/api/v1/open-data`.
+176. Shared: Added `OpenDataLguBase`, `OpenDataComplianceLgu`, `OpenDataInspectionsLgu`, `OpenDataFeesLgu`, and `OpenDataResult<T>` interfaces to `shared/types/api.ts`.
+
+### Phase K #4: Outbound webhooks for LGU integrations
+
+177. API: Added `LguWebhookEndpoint` model to `prisma/schema.prisma` (fields: lguId FK, url, secret, events[], isActive) with back-relation on `Lgu`. Added `WebhookDelivery` model (endpointId FK, event, payload JSON, statusCode, attempt, success, nextRetryAt).
+178. API: Created manual migration `prisma/migrations/20260531_lgu_webhook_endpoints/migration.sql`. Ran `npx prisma generate`.
+179. API: Created `src/services/webhook-delivery.ts` — `registerWebhookEndpoint`, `listWebhookEndpoints`, `deleteWebhookEndpoint` (with audit log), and `enqueueWebhookEvent` (fire-and-forget dispatch to all active subscribed endpoints for an LGU). Delivery uses `fetch` with 10s timeout, HMAC-SHA256 signature in `X-InspectPH-Signature: sha256=<hex>`, stores `WebhookDelivery` record with statusCode and success flag.
+180. API: Added `"webhook_endpoint.created"` and `"webhook_endpoint.deleted"` to audit log action union; added `"webhook_endpoint"` to entity type union in `src/services/audit-logs.ts`.
+181. API: Hooked `enqueueWebhookEvent` into four services: `inspection.completed` (after status update to COMPLETED in `inspections.ts`), `finding.raised` (after `createFinding` in `inspections.ts`), `certificate.issued` (after `createFireSafetyCertificate`), and `payment.received` (after successful paid webhook in `payments.ts`). All calls use `void` to remain non-blocking.
+182. API: Created `src/routes/webhook-endpoints.ts` — `GET /webhook-endpoints` (list), `POST /webhook-endpoints` (create, HTTPS URL + min-16-char secret required), `DELETE /webhook-endpoints/:id`. Scoped to caller's LGU via `requireJurisdiction()`. ADMIN_ROLES only.
+183. API: Registered `webhookEndpointsRouter` in `app.ts` under `/api/v1/webhook-endpoints`.
+184. Shared: Added `OutboundWebhookEvent` type and `WebhookEndpoint` interface to `shared/types/api.ts`.
+185. Dashboard: Created `src/lib/api/webhook-endpoints.ts` — `listWebhookEndpoints`, `createWebhookEndpoint`, `deleteWebhookEndpoint`.
+186. Dashboard: Created `src/hooks/use-webhook-endpoints.ts` — `useWebhookEndpoints` query, `useCreateWebhookEndpoint` mutation, `useDeleteWebhookEndpoint` mutation (each invalidates `["webhook-endpoints"]` on success).
+187. Dashboard: Created `src/components/webhook-endpoint-manager.tsx` — table of endpoints with event tags (colour-coded), active indicator, registration date, delete-with-confirm action. Add-endpoint modal with URL, secret, and multi-select event subscription fields.
+188. Dashboard: Created `src/app/settings/webhooks/page.tsx`.
+189. Dashboard: Added "Webhook endpoints" nav item (`/settings/webhooks`, `ApiOutlined`) to `dashboard-app-shell.tsx`.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 32 — Phase K #1: Checklist Template Marketplace
+
+### Schema and migration
+
+190. API: Extended `ChecklistTemplate` model in `prisma/schema.prisma` with: `lguId String?` (nullable FK to `Lgu`, null = platform-default), `forkedFromId String?` (self-referential FK via `"TemplateForked"` named relation), `isMarketplace Boolean @default(false)`, `publishedAt DateTime?`. Added `ratings ChecklistTemplateRating[]` back-relation. Added `@@index([lguId])` and `@@index([isMarketplace])`.
+191. API: Added `ChecklistTemplateRating` model — `id`, `templateId` FK, `lguId` FK, `rating Int` (1–5), `comment String?`, timestamps, `@@unique([templateId, lguId])` (one rating per LGU per template).
+192. API: Added back-relations `checklistTemplates ChecklistTemplate[]` and `templateRatings ChecklistTemplateRating[]` to `Lgu` model.
+193. API: Created manual migration `prisma/migrations/20260531_checklist_marketplace/migration.sql` — adds marketplace columns + FKs to `ChecklistTemplate`, creates `ChecklistTemplateRating` table with FK/index/unique constraint. Ran `npx prisma generate`.
+
+### API — service
+
+194. API: Created `src/services/checklist-marketplace.ts` — five exported functions:
+
+- `listMarketplaceTemplates(input)` — paginated list of `isMarketplace=true` templates with `avgRating`, `ratingCount`, and `forkCount` aggregated per template.
+- `forkChecklistTemplate(templateId, lguId, actorUserId)` — copies template into LGU namespace with unique generated code (`{CODE}_FORK_{LGU_PREFIX}`), emits `checklist_template.forked` audit log.
+- `publishChecklistTemplate(templateId, actorUserId)` — sets `isMarketplace=true` + `publishedAt`, emits `checklist_template.published` audit log.
+- `promoteToDefault(templateId, actorUserId)` — clears `lguId` (admin-only intent), emits `checklist_template.promoted` audit log.
+- `rateChecklistTemplate(input)` — upsert rating (1–5) per LGU per template; rejects non-marketplace templates.
+
+195. API: Extended audit log action union in `src/services/audit-logs.ts` with `"checklist_template.forked"`, `"checklist_template.promoted"`, `"checklist_template.published"`; added `"checklist_template"` to entity type union.
+
+### API — routes
+
+196. API: Created `src/routes/checklist-marketplace.ts` — five routes:
+
+- `GET /checklist-templates/marketplace` — all authenticated users; paginated listing with module + search filters.
+- `POST /checklist-templates/:id/fork` — ADMIN_ROLES + `requireJurisdiction()`; resolves LGU from `request.jurisdictionScope.lguIds[0]`.
+- `POST /checklist-templates/:id/publish` — ADMIN_ROLES.
+- `POST /checklist-templates/:id/promote` — `admin` role only.
+- `POST /checklist-templates/:id/rate` — ADMIN_ROLES + `requireJurisdiction()`; rating 1–5 validated.
+
+197. API: Registered `checklistMarketplaceRouter` in `src/app.ts` at `/api/v1/checklist-templates` (stacked alongside existing `checklistTemplatesRouter`).
+
+### Shared types
+
+198. Shared: Added `MarketplaceTemplate` and `TemplateRating` interfaces to `shared/types/api.ts`.
+
+### Dashboard — API client, hooks, component, page, nav
+
+199. Dashboard: Created `src/lib/api/checklist-marketplace.ts` — `listMarketplaceTemplates`, `forkTemplate`, `publishTemplate`, `promoteTemplate`, `rateTemplate`.
+200. Dashboard: Created `src/hooks/use-checklist-marketplace.ts` — `useMarketplaceTemplates` query, `useForkTemplate`, `usePublishTemplate`, `usePromoteTemplate`, `useRateTemplate` mutations (each invalidates `["marketplace-templates"]` on success).
+201. Dashboard: Created `src/components/checklist-marketplace.tsx` — module-color-tagged template cards with fork, rate, publish (admin), and promote (super-admin) actions; Rate modal with Ant Design `Rate` + comment textarea; search input + module Select filter; pagination.
+202. Dashboard: Created `src/app/checklist-templates/marketplace/page.tsx` — server component wrapping `<ChecklistMarketplace />`.
+203. Dashboard: Added `ShoppingOutlined` import and "Template marketplace" nav item (`/checklist-templates/marketplace`, visible to all authenticated users) to `dashboard-app-shell.tsx`.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 33 — Phase K #5: OAuth2 Third-Party App Authorization
+
+Partners (banks, insurers, health bodies) can read FSIC certificates and compliance scores with explicit owner consent, using a standard OAuth 2.0 authorization-code flow.
+
+### Schema and migration
+
+204. API: Added `oauthAuthCodes OAuthAuthorizationCode[]` and `oauthAccessTokens OAuthAccessToken[]` back-relations to the `User` model in `prisma/schema.prisma`.
+205. API: Added three new models to `prisma/schema.prisma`: `OAuthClient` (clientId unique, clientSecret bcrypt hash, name, description, redirectUri, scopes[], isActive, timestamps), `OAuthAuthorizationCode` (code unique, clientId FK, userId FK, redirectUri, scope[], used bool, expiresAt), `OAuthAccessToken` (token unique, clientId FK, userId FK, scope[], expiresAt).
+206. API: Created manual migration `prisma/migrations/20260532_oauth2_clients/migration.sql` — creates all three tables with FK constraints, indexes, and unique constraints. Ran `npx prisma generate`.
+
+### API — service
+
+207. API: Created `src/services/oauth.ts` — full OAuth2 service: `registerOAuthClient` (16-byte clientId, 32-byte plain secret returned once, bcrypt-hashed in DB, audit log), `listOAuthClients`, `deleteOAuthClient`, `getOAuthClientByClientId`, `createAuthorizationCode` (validates redirectUri, intersects scopes, 10-min expiry), `exchangeCodeForToken` (bcrypt verifies secret, validates code, issues 40-byte opaque token 1-hr expiry), `validateOAuthToken`, `getCertificateForOAuth` (scope guard + business ownership check), `getComplianceForOAuth` (scope guard + ownership check, lazy-imports computeComplianceScore).
+
+### API — audit log
+
+208. API: Extended `src/services/audit-logs.ts` with action values `"oauth_client.created"` and `"oauth_client.deleted"`; added `"oauth_client"` to entity type union.
+
+### API — routes
+
+209. API: Created `src/routes/oauth.ts` — `GET/POST /oauth/clients` (admin), `DELETE /oauth/clients/:id` (admin), `GET /oauth/clients/:clientId/info` (public), `POST /oauth/authorize` (business_owner, approve/deny), `POST /oauth/token` (authorization_code grant, client credentials in body), `GET /oauth/resources/certificates/:certificateNumber` (Bearer token), `GET /oauth/resources/compliance/:businessId` (Bearer token).
+210. API: Registered `oauthRouter` in `src/app.ts` at `/api/v1/oauth`.
+
+### Shared types
+
+211. Shared: Added to `shared/types/api.ts`: `OAUTH_SCOPES` const, `OAuthScope` type, `OAuthClientRecord`, `OAuthConsentInfo`, `OAuthTokenResponse`, `OAuthCertificateResource`, `OAuthComplianceResource`.
+
+### Dashboard — API client, hooks, components, pages, nav
+
+212. Dashboard: Created `src/lib/api/oauth.ts` — `listOAuthClients`, `registerOAuthClient` (returns one-time `clientSecret`), `deleteOAuthClient`, `getOAuthClientInfo` (public, for consent page), `grantOAuthConsent`.
+213. Dashboard: Created `src/hooks/use-oauth-clients.ts` — `useOAuthClients`, `useRegisterOAuthClient`, `useDeleteOAuthClient`.
+214. Dashboard: Created `src/components/oauth-client-manager.tsx` — admin table with register modal and one-time secret display modal (copy buttons, security warning).
+215. Dashboard: Created `src/app/settings/oauth-apps/page.tsx` — wraps `<OAuthClientManager />`. Title "OAuth Apps — InspectPH".
+216. Dashboard: Created `src/components/oauth-consent-page.tsx` — consent UI with app info, human-readable scope list, Allow/Deny buttons.
+217. Dashboard: Created `src/app/oauth/authorize/page.tsx` — reads search params, renders consent page, posts decision, redirects to partner callback URL.
+218. Dashboard: Added `KeyOutlined` import and "OAuth apps" nav item (`/settings/oauth-apps`, admin-only) to `dashboard-app-shell.tsx`.
+
+## Pass 34 — Phase K #6: Cross-LGU mutual recognition
+
+### API — Schema, service, routes
+
+219. API: Extended `schema.prisma` — added `CrossLguRecognitionRequest` model with fields: id, requestingLguId, issuingLguId?, certificateNumber, businessName, status (enum `CrossLguRecognitionStatus` defaulting to `PENDING_CONSENT`), requestedByUserId?, consentOwnerId?, complianceScore?, complianceGrade?, signedPayload?, signature?, consentGivenAt?, resolvedAt?, resolvedByUserId?, expiresAt, createdAt, updatedAt. Added back-relations to `Lgu` (outgoing/incoming via named relations) and `User` (requester, consent owner, resolver).
+220. API: Created migration SQL at `prisma/migrations/20260533_cross_lgu_recognition/migration.sql` — creates `CrossLguRecognitionRequest` table with FK constraints and indexes on requestingLguId, issuingLguId, certificateNumber, status, consentOwnerId.
+221. API: Created `src/services/mutual-recognition.ts` — exports: `verifyRecognitionSignature` (HMAC-SHA256 + `crypto.timingSafeEqual`), `createRecognitionRequest` (looks up cert + issuing LGU + business owner, creates request PENDING_CONSENT), `respondToConsent` (generates signed payload + HMAC on grant, lazy-imports compliance score), `resolveRecognitionRequest` (final approve/reject), `listRecognitionRequests` (paginated, scoped by lguId + role), `getRecognitionRequest`, `listPendingConsentRequests`.
+222. API: Updated `src/services/audit-logs.ts` — added recognition actions `recognition.requested`, `recognition.consent_granted`, `recognition.consent_denied`, `recognition.approved`, `recognition.rejected`; added `recognition_request` entity type.
+223. API: Created `src/routes/mutual-recognition.ts` — 7 routes under `/mutual-recognition`: GET /requests (admin, paginated), POST /requests (admin, initiates), GET /requests/:id (admin or business_owner), POST /requests/:id/consent (business_owner, grant/deny), POST /requests/:id/resolve (admin, approve/reject), GET /pending-consent (business_owner), POST /verify (public HMAC check).
+224. API: Updated `src/app.ts` — registered `mutualRecognitionRouter` at `/api/v1/mutual-recognition`.
+
+### Shared types
+
+225. Shared: Added to `shared/types/api.ts`: `CrossLguRecognitionStatus` union type, `RecognitionLguSummary`, `RecognitionRequest`, `RecognitionVerifyResult`.
+
+### Dashboard — API client, hooks, components, pages, nav
+
+226. Dashboard: Created `src/types/index.ts` — barrel re-exporting everything from `@shared/types/api` to support `@/types` path alias used by components.
+227. Dashboard: Created `src/lib/api/client.ts` — axios singleton `apiClient` with a request interceptor that reads the JWT access token from localStorage (key `inspect-ph-dashboard-session`) so callers do not need to pass the token explicitly.
+228. Dashboard: Created `src/lib/api/mutual-recognition.ts` — `listRecognitionRequests`, `createRecognitionRequest`, `getRecognitionRequest`, `respondToConsent`, `resolveRecognitionRequest`, `listPendingConsentRequests`, `verifyRecognitionPayload`.
+229. Dashboard: Created `src/hooks/use-mutual-recognition.ts` — `useRecognitionRequests`, `useCreateRecognitionRequest`, `useRespondToConsent`, `useResolveRecognitionRequest`, `usePendingConsentRequests`, `useVerifyRecognitionPayload`.
+230. Dashboard: Created `src/components/mutual-recognition-browser.tsx` — table of requests (certificate number, business name, requesting/issuing LGU, status tag, compliance score, expiry, actions). Role-aware action buttons (Grant/Deny for business owner on PENDING_CONSENT; Approve/Reject for admin on CONSENT_GRANTED). Tabs: "All requests", "Pending my consent" (business owner), "Verify payload" (HMAC verification panel). "New recognition request" modal for admins. Direction + status filters.
+231. Dashboard: Created `src/app/mutual-recognition/page.tsx` — server component wrapping `<MutualRecognitionBrowser />`. Title "Mutual Recognition — InspectPH".
+232. Dashboard: Updated `src/components/dashboard-app-shell.tsx` — added `SwapOutlined` to icon imports; added "Mutual recognition" nav item (`/mutual-recognition`, `adminOnly: false`); added `/mutual-recognition` to `PROTECTED_PREFIXES`.
+
+### Quality gates
+
+- API `npx tsc --noEmit`: zero errors.
+- Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.

@@ -743,3 +743,293 @@ export interface ProvisionedLgu {
   adminUserId: string;
   adminEmail: string;
 }
+
+// ── Compliance Score ─────────────────────────────────────────────────────────
+
+export interface ComplianceScoreBreakdown {
+  findings: { score: number; resolved: number; total: number };
+  inspectionAttendance: { score: number; attended: number; total: number };
+  checklistCompliance: { score: number; passed: number; total: number };
+  paymentCompliance: { score: number; paidOnTime: number; total: number };
+}
+
+export interface ComplianceScoreResult {
+  businessId: string;
+  businessName: string;
+  score: number;
+  grade: "A" | "B" | "C" | "D" | "F";
+  breakdown: ComplianceScoreBreakdown;
+  computedAt: string;
+  period: { from: string; to: string };
+}
+
+// ── KPI Report ───────────────────────────────────────────────────────────────
+
+export interface KpiTrendEntry {
+  month: string; // "YYYY-MM"
+  total: number;
+  completed: number;
+  passRate: number;
+}
+
+export interface KpiOfficeEntry {
+  officeCode: string;
+  officeName: string;
+  total: number;
+  completed: number;
+  passRate: number;
+}
+
+export interface KpiReport {
+  period: { from: string; to: string };
+  inspections: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    overdue: number;
+    passRate: number;
+  };
+  findings: {
+    total: number;
+    resolved: number;
+    resolvedRate: number;
+    criticalOpen: number;
+  };
+  payments: {
+    totalCollectedInMinor: number;
+    totalCollectedCount: number;
+    totalPendingInMinor: number;
+    totalPendingCount: number;
+  };
+  byOffice: KpiOfficeEntry[];
+  trend: KpiTrendEntry[];
+}
+
+// ── Inspector Wellness ───────────────────────────────────────────────────────
+
+export interface InspectorWellnessReport {
+  period: { from: string; to: string };
+  activeInspectorCount: number;
+  avgInspectionsPerInspector: number;
+  avgDurationMinutes: number | null;
+  medianDurationMinutes: number | null;
+  afterHoursRatePct: number;
+  avgPendingQueuePerInspector: number;
+}
+
+// ── Payment Anomaly ──────────────────────────────────────────────────────────
+
+export type PaymentAnomalyReason =
+  | "DUPLICATE"
+  | "AMOUNT_MISMATCH"
+  | "LOW_AMOUNT"
+  | "HIGH_VELOCITY";
+
+export interface PaymentAnomalyFlag {
+  id: string;
+  paymentId: string;
+  reason: string;
+  detail: string | null;
+  quarantinedAt: string;
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  payment: {
+    referenceNumber: string;
+    amountInMinor: number;
+    permitRecordId: string;
+  };
+}
+
+// ─── Open Data (K #3) ─────────────────────────────────────────────────────────
+
+export interface OpenDataLguBase {
+  lguId: string;
+  lguCode: string;
+  lguName: string;
+  region: string | null;
+  province: string | null;
+  city: string | null;
+}
+
+export interface OpenDataComplianceLgu extends OpenDataLguBase {
+  avgComplianceScore: number;
+  businessCount: number;
+  gradeCounts: Record<string, number>;
+}
+
+export interface OpenDataInspectionsLgu extends OpenDataLguBase {
+  total: number;
+  completed: number;
+  failed: number;
+  passRate: number;
+}
+
+export interface OpenDataFeesLgu extends OpenDataLguBase {
+  totalCollectedInMinor: number;
+  totalCollectedCount: number;
+}
+
+export interface OpenDataResult<T> {
+  attribution: string;
+  data: T[];
+  meta: { total: number };
+  period?: { from: string; to: string };
+}
+
+// ─── Outbound Webhooks (K #4) ─────────────────────────────────────────────────
+
+export type OutboundWebhookEvent =
+  | "inspection.completed"
+  | "finding.raised"
+  | "certificate.issued"
+  | "payment.received";
+
+export interface WebhookEndpoint {
+  id: string;
+  lguId: string;
+  url: string;
+  events: OutboundWebhookEvent[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Checklist template marketplace
+// ---------------------------------------------------------------------------
+
+export interface MarketplaceTemplate {
+  id: string;
+  code: string;
+  module: string;
+  title: string;
+  description?: string;
+  sortOrder: number;
+  isActive: boolean;
+  version: number;
+  /** null = platform-default */
+  lguId: string | null;
+  forkedFromId: string | null;
+  isMarketplace: boolean;
+  publishedAt: string | null;
+  avgRating: number | null;
+  ratingCount: number;
+  forkCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateRating {
+  id: string;
+  templateId: string;
+  lguId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// OAuth2 third-party app authorization
+// ---------------------------------------------------------------------------
+
+export const OAUTH_SCOPES = [
+  "certificate:read",
+  "permit:read",
+  "compliance:read",
+] as const;
+
+export type OAuthScope = (typeof OAUTH_SCOPES)[number];
+
+export interface OAuthClientRecord {
+  id: string;
+  clientId: string;
+  name: string;
+  description?: string;
+  redirectUri: string;
+  scopes: OAuthScope[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OAuthConsentInfo {
+  clientId: string;
+  name: string;
+  description?: string;
+  redirectUri: string;
+  scopes: OAuthScope[];
+}
+
+export interface OAuthTokenResponse {
+  access_token: string;
+  token_type: "Bearer";
+  expires_in: number;
+  scope: string;
+}
+
+export interface OAuthCertificateResource {
+  certificateNumber: string;
+  businessName: string;
+  issuedAt: string;
+  expiresAt: string | null;
+  verificationUrl: string | null;
+  status: string;
+}
+
+export interface OAuthComplianceResource {
+  businessId: string;
+  businessName: string;
+  score: number;
+  grade: string;
+}
+
+// ---------------------------------------------------------------------------
+// Cross-LGU mutual recognition
+// ---------------------------------------------------------------------------
+
+export type CrossLguRecognitionStatus =
+  | "PENDING_CONSENT"
+  | "CONSENT_GRANTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "EXPIRED";
+
+export interface RecognitionLguSummary {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface RecognitionRequest {
+  id: string;
+  certificateNumber: string;
+  businessName: string;
+  status: CrossLguRecognitionStatus;
+  requestingLgu: RecognitionLguSummary;
+  issuingLgu: RecognitionLguSummary | null;
+  complianceScore: number | null;
+  complianceGrade: string | null;
+  signedPayload: string | null;
+  signature: string | null;
+  consentGivenAt: string | null;
+  resolvedAt: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface RecognitionVerifyResult {
+  valid: boolean;
+  payload: {
+    certificateNumber: string;
+    businessName: string;
+    issuingLguCode: string;
+    issuingLguName: string;
+    requestingLguId: string;
+    complianceScore: number | null;
+    complianceGrade: string | null;
+    recognitionGrantedAt: string;
+    expiresAt: string;
+    nonce: string;
+  };
+}
