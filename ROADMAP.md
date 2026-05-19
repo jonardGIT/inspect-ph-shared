@@ -1344,6 +1344,22 @@ Definition of done: any new engineer can restore the platform from cold backups,
 ### Quality gates
 
 - Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 36 — Mobile API request-path hardening tests
+
+250. Mobile: Added `jest.config.ts` (node environment, `ts-jest` preset, alias mapping for `@/` and shared types) to support focused unit tests in the mobile workspace.
+251. Mobile: Added `test` script in `package.json` to run `jest --config jest.config.ts --runInBand` for deterministic local execution.
+252. Mobile: Added `lib/__tests__/api.request.test.ts` covering three critical request behaviors through public API functions:
+253. Empty-body success response handling (204/empty body) resolves without parse errors.
+254. JSON API error payload maps to `ApiRequestError` with server-provided message.
+255. Non-JSON error payload maps to `ApiRequestError` using HTTP status text fallback.
+
+### Quality gates
+
+- Mobile `npm test`: 3/3 tests passing.
+- Mobile `npx tsc --noEmit`: zero errors.
 - Dashboard `npx tsc --noEmit`: zero errors (pre-existing Sentry module-not-found warnings unchanged).
 - Dashboard Vitest full suite: 87/87 tests passing (39 files).
 
@@ -1725,8 +1741,39 @@ Partners (banks, insurers, health bodies) can read FSIC certificates and complia
 231. Dashboard: Created `src/app/mutual-recognition/page.tsx` — server component wrapping `<MutualRecognitionBrowser />`. Title "Mutual Recognition — InspectPH".
 232. Dashboard: Updated `src/components/dashboard-app-shell.tsx` — added `SwapOutlined` to icon imports; added "Mutual recognition" nav item (`/mutual-recognition`, `adminOnly: false`); added `/mutual-recognition` to `PROTECTED_PREFIXES`.
 
-### Quality gates
+### Phase K #7 — National integrations (PhilSys, BIR TIN, DTI/SEC, PAGASA/PHIVOLCS)
+
+233. API schema: Added `NationalVerificationRecord` model with `NationalVerificationKind` enum (`PCN`, `TIN`, `DTI_NAME`, `SEC_NAME`, `LRA_PARCEL`, `DISASTER_ALERT`). Back-relations on `User` (`nationalVerifications`) and `BusinessEstablishment` (`nationalVerifications`). Indexes on `(kind, referenceValue)`, `businessId`, `requestedByUserId`, `createdAt`.
+234. API migration: Created `prisma/migrations/20260534_national_integrations/migration.sql` — creates table, enum, 4 indexes, 2 FK constraints.
+235. API lib: Created `src/lib/national-integration-provider.ts` — `NationalIntegrationProvider` interface; `StubNationalIntegrationProvider` (format-validates PCN/TIN, fetches PAGASA bulletin JSON with 5 s timeout, graceful fallback); `getNationalIntegrationProvider()` singleton factory; helpers `normalizeTin`, `isTinFormatValid`, `isPcnFormatValid`.
+236. API service: Created `src/services/national-integrations.ts` — `verifyPhilSysPcn`, `verifyBirTin`, `lookupBusinessName`, `getDisasterAlerts`, `listVerificationHistory`; 7-day cache via `NationalVerificationRecord`; audit logs for each operation.
+237. API service: Updated `src/services/audit-logs.ts` — added actions `national.pcn_verified`, `national.tin_verified`, `national.business_name_lookup`, `national.disaster_alert_fetch`; added entity type `national_verification`.
+238. API routes: Created `src/routes/national-integrations.ts` — `POST /verify-pcn`, `POST /verify-tin`, `GET /business-lookup`, `GET /disaster-alerts`, `GET /verifications`. Admin-only except `/disaster-alerts` (all authenticated).
+239. API app: Updated `src/app.ts` — registered `nationalIntegrationsRouter` at `${API_V1}/national`.
+240. Shared types: Added `NationalVerificationKind`, `PcnVerifyResult`, `TinVerifyResult`, `BusinessNameMatch`, `DisasterAlertType`, `DisasterAlertSeverity`, `DisasterAlert`, `NationalVerificationHistoryItem` to `shared/types/api.ts`.
+241. Dashboard API client: Created `src/lib/api/national-integrations.ts` — `verifyPhilSysPcn`, `verifyBirTin`, `lookupBusinessName`, `getDisasterAlerts`, `listVerificationHistory` using `apiClient` singleton.
+242. Dashboard hooks: Created `src/hooks/use-national-integrations.ts` — `useVerifyPhilSysPcn`, `useVerifyBirTin`, `useLookupBusinessName`, `useDisasterAlerts`, `useVerificationHistory` (TanStack Query v5).
+243. Dashboard component: Created `src/components/national-integrations-panel.tsx` — tabs for PhilSys PCN verification, BIR TIN verification, DTI/SEC business name lookup, PAGASA disaster alerts, and verification history. Info banner for stub mode.
+244. Dashboard page: Created `src/app/settings/national-integrations/page.tsx` — server component wrapping `<NationalIntegrationsPanel />`. Title "National Integrations — InspectPH".
+245. Dashboard nav: Updated `src/components/dashboard-app-shell.tsx` — added "National integrations" nav item (`/settings/national-integrations`, `adminOnly: true`, `GlobalOutlined`); added path to `PROTECTED_PREFIXES`.
+
+### Quality gates (after Phase K #7)
 
 - API `npx tsc --noEmit`: zero errors.
+- Dashboard `npx vitest run`: 98 tests passed.
+- Mobile `npx tsc --noEmit`: zero errors.
 - Dashboard Vitest full suite: 98/98 tests passing (41 files).
+- Mobile `npx tsc --noEmit`: zero errors.
+
+---
+
+## Pass 35 — Mobile API client resilience and URL-source unification
+
+246. Mobile: Created `lib/api-base-url.ts` as the single source of truth for API base URL resolution (uses `EXPO_PUBLIC_API_URL` when set, then Expo host fallback, then `http://localhost:4000/api/v1`).
+247. Mobile: Updated `lib/api.ts` to import `API_BASE_URL` from `lib/api-base-url.ts`, removing duplicated base-URL resolution logic.
+248. Mobile: Updated `components/sync-status-bar.tsx` to use the same shared `API_BASE_URL` for health probing, preventing drift from request paths used by the main API client.
+249. Mobile: Hardened `request()` in `lib/api.ts` to safely handle empty-body success responses and non-JSON error bodies without throwing misleading parse errors; preserves `ApiRequestError` behavior for failed responses.
+
+### Quality gates
+
 - Mobile `npx tsc --noEmit`: zero errors.

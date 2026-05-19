@@ -352,12 +352,17 @@ export interface InspectionRecord {
     id: string;
     businessName: string;
   };
-  office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name">;
+  office: Pick<OfficeRecord, "id" | "lguId" | "code" | "name"> & {
+    moduleCodes: string[];
+  };
   permit: {
     id: string;
     permitNumber: string;
   };
   inspectorId?: string;
+  /** The module this inspection was created for (e.g. "BPLO", "FIRE").
+   *  Undefined for legacy inspections that pre-date per-inspection module tracking. */
+  moduleCode?: string;
   scheduledAt: string;
   startedAt?: string;
   completedAt?: string;
@@ -1032,4 +1037,82 @@ export interface RecognitionVerifyResult {
     expiresAt: string;
     nonce: string;
   };
+}
+
+// ---------------------------------------------------------------------------
+// Phase K #7 — National integrations
+// ---------------------------------------------------------------------------
+
+export type NationalVerificationKind =
+  | "PCN"
+  | "TIN"
+  | "DTI_NAME"
+  | "SEC_NAME"
+  | "LRA_PARCEL"
+  | "DISASTER_ALERT";
+
+export interface PcnVerifyResult {
+  id: string;
+  pcn: string;
+  registeredName: string | null;
+  nameMatch: boolean;
+  verified: boolean;
+  providerSource: string;
+}
+
+export interface TinVerifyResult {
+  id: string;
+  tin: string;
+  normalizedTin: string;
+  verified: boolean;
+  registeredName: string | null;
+  providerSource: string;
+}
+
+export interface BusinessNameMatch {
+  name: string;
+  registrationNumber: string;
+  type: "DTI" | "SEC";
+  status: "ACTIVE" | "CANCELLED" | "SUSPENDED" | "UNKNOWN";
+  owner: string | null;
+  registeredAt: string | null;
+}
+
+export type DisasterAlertType =
+  | "TYPHOON"
+  | "EARTHQUAKE"
+  | "FLOOD"
+  | "VOLCANIC"
+  | "OTHER";
+
+export type DisasterAlertSeverity =
+  | "ADVISORY"
+  | "WARNING"
+  | "WATCH"
+  | "SIGNAL_1"
+  | "SIGNAL_2"
+  | "SIGNAL_3"
+  | "SIGNAL_4"
+  | "SIGNAL_5";
+
+export interface DisasterAlert {
+  id: string;
+  type: DisasterAlertType;
+  severity: DisasterAlertSeverity;
+  title: string;
+  description: string;
+  affectedAreas: string[];
+  issuedAt: string;
+  effectiveUntil: string | null;
+  source: "PAGASA" | "PHIVOLCS" | "NDRRMC";
+  url: string | null;
+}
+
+export interface NationalVerificationHistoryItem {
+  id: string;
+  kind: NationalVerificationKind;
+  referenceValue: string;
+  verified: boolean;
+  providerSource: string;
+  createdAt: string;
 }
