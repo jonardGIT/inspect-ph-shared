@@ -89,7 +89,9 @@ The long-term RBAC model must support all modules and multi-LGU deployments.
 
 Notes:
 
-- The current API and mobile use `admin` and `inspector` only. The `UserRole` enum must be widened when scope enforcement is added.
+- The current implementation already supports 7 roles: `admin`, `inspector`, `lgu_admin`, `office_supervisor`, `office_clerk`, `business_owner`, and `citizen`.
+- `admin` is the current platform-wide elevated role in code; it is the practical equivalent of the roadmap's longer-term `super_admin` concept.
+- Surface fit should stay split by workflow: web dashboard for `admin`, `lgu_admin`, `office_supervisor`, and `office_clerk`; mobile for `inspector`; mobile self-service where enabled for `business_owner` and `citizen`.
 - The `roleProfile` shape already includes `accessScope` and `permissions` arrays. The fuller role model maps onto this pattern without breaking existing consumers.
 - Permissions must follow scoped rules: `assigned`, `office`, `lgu`, and `global`. Fail closed when the scope cannot be determined.
 
@@ -905,12 +907,22 @@ Phase G Batch 3 — checklist template management:
 4. ✅ API: Checklist template routes (`GET /api/v1/checklist-templates`, `GET /api/v1/checklist-templates/:id`, `POST /api/v1/checklist-templates`, `PATCH /api/v1/checklist-templates/:id/active`) registered in `app.ts`.
 5. ✅ Dashboard: Checklist template management — API client (`src/lib/api/checklist-templates.ts`), hook (`use-checklist-template-browser.ts`), browser component (`checklist-template-browser.tsx`), page (`src/app/checklist-templates/page.tsx`), nav item added in `dashboard-app-shell.tsx`.
 6. ✅ API: OpenAPI 3.0 spec (`src/lib/openapi.ts`) covering health, auth, inspections, permits, businesses, modules, and checklist templates. `GET /api/v1/docs` serves Swagger UI via `swagger-ui-express`.
-7. ✅ API: Module soft-delete — `archiveModule()` service function sets `archivedAt` + `isActive: false`. `PATCH /api/v1/modules/:id/archive` route added. `archivedAt` exposed in `PublicModule` shape.
-8. ✅ Dashboard: Owner support desk — `owner-support-desk.tsx` component with business name/owner name search, inline permit history per business. Mounted at top of `/support` page above existing public lookups.
-9. ✅ API: Data retention cleanup — `runDataRetention()` script purges audit logs and processed/failed notifications older than configurable thresholds (`AUDIT_LOG_RETENTION_DAYS`, `NOTIFICATION_RETENTION_DAYS`). Wired as weekly in-process cron in `server.ts`, runnable standalone via `npm run cleanup:data`.
-10. ✅ API: Inspection CSV export — `GET /api/v1/reports/inspections/export` (admin-only) streams a UTF-8 CSV with office, business, permit, status, schedule, and audit timestamps. Supports `?officeId`, `?status`, `?fromDate`, `?toDate` query params, capped at 10 000 rows.
-11. ✅ API tests (Phase G): `checklist-templates.test.ts` (7 scenarios), `reports.test.ts` (3 scenarios), `modules.test.ts` extended with archive + already-archived + 404 scenarios (3 new tests).
-12. ✅ API: Production hardening — (a) health endpoint (`GET /api/v1/health`) now pings the database with `SELECT 1` and returns `{ status, db }`, responding 503 when the DB is unreachable without crashing. (b) `PATCH /api/v1/permits/:id/archive` added — admin-only soft-delete sets `archivedAt` on the permit record. (c) `PATCH /api/v1/businesses/:id/archive` added — admin-only soft-delete sets `archivedAt` on the business establishment. Both archive routes follow the same 404/409 guard pattern as module archive.
+
+Phase G Batch 4 — module browser UX hardening:
+
+1. Gap identified and closed: nine module browser routes (`/buildsure`, `/sanitacheck`, `/marketguard`, `/ecowatch`, `/zoneverify`, `/infrainspect`, `/agricheck`, `/tourismsafe`, `/assesspro`) shipped without route-level metadata, `loading.tsx`, or `error.tsx` despite using client-side data hooks and custom workspace shells.
+2. Gap identified and closed: `sanitacheck`, `zoneverify`, and `tourismsafe` pinned users to the first assigned office while the other module browsers already supported explicit office switching.
+3. Gap identified and closed: office-switcher `Select` controls across the module browsers were missing accessible labels.
+4. Gap identified and closed: overview panels used nested interactive controls (`Button` wrapping `Link`) for the "Open inspection workspace" action.
+5. ✅ Dashboard: metadata plus route-specific loading and error boundaries added for all nine module browser pages.
+6. ✅ Dashboard: all nine module browsers now support consistent office selection behavior when a user has multiple assigned offices, and each selector is explicitly labeled.
+7. ✅ Dashboard: overview-panel navigation semantics corrected across all nine module snapshot panels.
+8. ✅ API: Module soft-delete — `archiveModule()` service function sets `archivedAt` + `isActive: false`. `PATCH /api/v1/modules/:id/archive` route added. `archivedAt` exposed in `PublicModule` shape.
+9. ✅ Dashboard: Owner support desk — `owner-support-desk.tsx` component with business name/owner name search, inline permit history per business. Mounted at top of `/support` page above existing public lookups.
+10. ✅ API: Data retention cleanup — `runDataRetention()` script purges audit logs and processed/failed notifications older than configurable thresholds (`AUDIT_LOG_RETENTION_DAYS`, `NOTIFICATION_RETENTION_DAYS`). Wired as weekly in-process cron in `server.ts`, runnable standalone via `npm run cleanup:data`.
+11. ✅ API: Inspection CSV export — `GET /api/v1/reports/inspections/export` (admin-only) streams a UTF-8 CSV with office, business, permit, status, schedule, and audit timestamps. Supports `?officeId`, `?status`, `?fromDate`, `?toDate` query params, capped at 10 000 rows.
+12. ✅ API tests (Phase G): `checklist-templates.test.ts` (7 scenarios), `reports.test.ts` (3 scenarios), `modules.test.ts` extended with archive + already-archived + 404 scenarios (3 new tests).
+13. ✅ API: Production hardening — (a) health endpoint (`GET /api/v1/health`) now pings the database with `SELECT 1` and returns `{ status, db }`, responding 503 when the DB is unreachable without crashing. (b) `PATCH /api/v1/permits/:id/archive` added — admin-only soft-delete sets `archivedAt` on the permit record. (c) `PATCH /api/v1/businesses/:id/archive` added — admin-only soft-delete sets `archivedAt` on the business establishment. Both archive routes follow the same 404/409 guard pattern as module archive.
 
 ## Guardrails
 
@@ -1089,6 +1101,79 @@ Gaps and weaknesses the roadmap does not yet address:
 15. **No vendor lock-in mitigation note.** Supabase, PayMongo, Expo, and Sentry are listed; what happens if one is replaced? A short portability statement per dependency is missing.
 16. **Testing pyramid is shallow on E2E.** Unit and integration coverage are strong; there is no Playwright or Detox end-to-end suite simulating an inspector logging in, doing a checklist, syncing offline, and the supervisor approving.
 17. **No formal threat model.** OWASP awareness exists implicitly, but there is no STRIDE table, no documented attacker personas (disgruntled employee, fraudulent business owner, scraping competitor, hostile LGU), and no abuse-case test list.
+
+### 1.1 Recommended role widening and missing workflow slices
+
+The current 7-role model is a strong base, but a live LGU deployment will likely need a few narrower roles before it needs many more modules.
+
+Recommended additions when the workload justifies separation of duties:
+
+1. `finance_officer` or `treasurer` — separate payment reconciliation, anomaly resolution, receipt confirmation, and treasury reporting from generic `admin` access.
+2. `privacy_officer` or `compliance_officer` — separate privacy-request handling, breach-response coordination, and retention-governance work from generic `admin` access.
+3. `certificate_issuer` or `approver` — separate final approval and certificate issuance from day-to-day office supervision when policy requires a second signatory.
+
+Optional later-stage roles only if the operating model grows into them:
+
+1. `super_admin` — only when multi-LGU tenant provisioning, billing, branding, and off-boarding must be platform-only rather than handled by `admin`.
+2. `integration_officer` or `external_verifier` — only when banks, insurers, or cross-LGU partners need a bounded role instead of broad dashboard access.
+3. `qa_reviewer` — only when fabricated findings, route cheating, or inspector-quality audits justify a dedicated queue owner.
+
+Role-linked workflow slices that still deserve explicit product treatment:
+
+1. Treasury workflow: payment exception handling, anomaly quarantine, reconciliation approval, and export ownership should not remain `admin`-only forever.
+2. Privacy workflow: triage, assignment, SLA tracking, and breach-response ownership should move from generic admin tooling into an explicit privacy case workflow.
+3. Approval workflow: field completion, desk review, CAP validation, and certificate issuance should become separate steps when the LGU needs stronger internal controls.
+4. Business-owner self-service: registration exists, but a real permit lifecycle still needs application, renewal, document submission, and payment follow-through in one owner journey.
+
+### 1.2 Reference scenario — Riverside Food Hub, Tuguegarao
+
+Use one realistic scenario to verify that the product shape matches how an LGU actually works.
+
+Scenario: Riverside Food Hub is a mixed-use food establishment in Tuguegarao applying for permit renewal after a complaint about a blocked rear exit and smoke accumulation.
+
+1. `office_clerk` encodes the business record, renews the permit application, and confirms the fee payment.
+2. `office_supervisor` schedules the inspection, assigns the field inspector, and monitors the queue.
+3. `inspector` performs the on-site inspection on mobile, records checklist results, attaches photo evidence, geotags the visit, and creates a high-severity finding for the blocked rear exit.
+4. `business_owner` receives the CAP, acknowledges it, completes the corrective action, and requests reinspection from mobile.
+5. `office_supervisor` reviews the CAP response, approves the reinspection schedule, and issues the certificate after the follow-up passes.
+6. `citizen` submits a public issue report about alley smoke and can track that report's status from mobile.
+7. `lgu_admin` uses the dashboard to monitor office workload, issue-report queues, and overall compliance posture for the LGU.
+8. `admin` uses the dashboard to review audit history and process a privacy request related to the business owner account.
+
+Seed support:
+
+- API script: `npm run seed:dev-role-scenario`
+- All seeded users use password `password123`
+- The scenario intentionally exercises staff, owner, and citizen views in one compact dataset instead of relying on the larger full demo seed
+
+### 1.3 Scenario acceptance checklist
+
+Mobile should allow the following in this scenario:
+
+- `inspector`: see assigned and scheduled inspections, open the Riverside Food Hub inspection, update checklist results, capture finding photos, record geolocation, move the inspection through status changes, and continue working when offline.
+- `inspector`: see the follow-up inspection after reinspection is requested and confirm the business is ready for certificate issuance.
+- `business_owner`: see the permit, payment state, CAP status, issued certificate, and upcoming inspection timeline in one account.
+- `business_owner`: acknowledge the CAP, view the finding in plain language plus formal text, and request reinspection without calling the office.
+- `citizen`: submit a fire-hazard issue report and later see its own report number and current status.
+- `office_supervisor` and `admin`: if mobile access remains enabled for field oversight, they should only see summary and field-context views, not become the primary operators for office administration on mobile.
+
+Web dashboard should allow the following in this scenario:
+
+- `office_clerk`: create or update the business and permit records, confirm the payment trail, and prepare the inspection work item.
+- `office_supervisor`: assign the inspector, monitor the inspection queue, review findings, manage CAP progress, schedule the reinspection, and issue the certificate after compliance is restored.
+- `lgu_admin`: see office-level reporting, issue-report volume, audit visibility, and user/office/module management within LGU scope.
+- `admin`: see platform-wide users, sessions, audit logs, privacy requests, and high-level operational reports across LGUs.
+- `finance_officer` or `treasurer` once introduced: own reconciliation, anomaly-resolution, and fee-collection reporting rather than inheriting those capabilities through `admin`.
+- `privacy_officer` once introduced: own privacy-request processing and breach-response actions rather than inheriting those capabilities through `admin`.
+
+Evidence the scenario should leave behind:
+
+- A paid permit tied to the business owner account.
+- One failed inspection with a high-severity finding, attachment evidence, and CAP history.
+- One passed follow-up inspection with an issued FSIC.
+- One future scheduled inspection so calendar and queue views remain meaningful.
+- One citizen issue report and one owner privacy request so public-service and compliance surfaces are both populated.
+- Audit-log entries and notifications touching the major role transitions.
 
 ### 2. Innovative, high-impact differentiators
 

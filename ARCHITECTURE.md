@@ -16,7 +16,12 @@ Canonical cross-repo delivery plan: `shared/ROADMAP.md`.
 - List response: `{ data: T[], meta: { total, page, limit } }`
 - Error response: `{ error: { code: string, message: string, details?: unknown } }`
 - Auth: `Authorization: Bearer <jwt>`
-- Initial API roles: `admin`, `inspector`
+- Current API roles: `admin`, `inspector`, `lgu_admin`, `office_supervisor`, `office_clerk`, `business_owner`, `citizen`
+- Role-to-surface default:
+  - `admin`, `lgu_admin`, `office_supervisor`, `office_clerk`: web dashboard primary
+  - `inspector`: mobile primary, dashboard secondary
+  - `business_owner`, `citizen`: mobile self-service primary when those public flows are enabled
+- Scope model: `global`, `lgu`, `office`, `assigned`, `own`
 - Session payloads may return both access and refresh JWTs
 - Session inventory endpoints now include `GET /api/v1/auth/sessions`, `GET /api/v1/auth/users/:id/sessions`, and `DELETE /api/v1/auth/sessions/:sessionId`
 - JWT auth sessions may carry a session id claim so revoked sessions can be denied immediately on protected routes
@@ -38,6 +43,17 @@ Canonical cross-repo delivery plan: `shared/ROADMAP.md`.
 - Dashboard session login uses API `/api/v1/auth/login` and stores the returned session locally in the browser.
 - Dashboard now includes an inspection queue route and an inspection workspace route.
 - Inspection workspace supports checklist review, findings review, attachment upload, and attachment open/download actions.
+
+## Implemented mobile surface
+
+- Mobile supports authenticated staff sessions for field inspection work.
+- Mobile also supports self-registration and signed-in flows for `business_owner` and `citizen` accounts.
+- Current mobile role fit:
+  - `inspector`: assigned inspections, checklist completion, findings, attachments, sync-ready field work
+  - `office_supervisor`, `admin`: optional mobile visibility for field oversight, but not the primary operations surface
+  - `office_clerk`: limited mobile value; dashboard remains the operational primary
+  - `business_owner`: own permits, certificates, CAPs, and reinspection-related self-service
+  - `citizen`: issue reporting and personal report tracking
 
 ## Cross-repo change protocol
 
